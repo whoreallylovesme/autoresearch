@@ -57,6 +57,13 @@ print("experiment complete")
 	if err != nil {
 		t.Fatal(err)
 	}
+	info, err := os.Stat(filepath.Join(workspace, "output"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm()&0o002 == 0 {
+		t.Fatalf("output directory is not host-cleanup-safe: %v", info.Mode())
+	}
 	var metrics map[string]any
 	if err := json.Unmarshal(content, &metrics); err != nil {
 		t.Fatal(err)

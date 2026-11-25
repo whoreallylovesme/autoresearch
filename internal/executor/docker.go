@@ -98,7 +98,7 @@ func (d *DockerExecutor) Submit(ctx context.Context, job Job) error {
 	jobContext, cancel := context.WithTimeout(context.Background(), job.Timeout)
 	process.cancel = cancel
 	containerName := containerName(job.ID)
-	arguments := []string{"run", "--rm", "--name", containerName, "--network=none", "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges:true", "--user=65532:65532", "--pids-limit", strconv.Itoa(job.PIDs), "--memory", fmt.Sprintf("%dm", job.MemoryMB), "--cpus", fmt.Sprintf("%.3f", job.CPUs), "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m", "--mount", "type=bind,src=" + workspace + ",dst=/work", "--workdir", "/work", "--env", "PYTHONDONTWRITEBYTECODE=1", "--env", "PYTHONUNBUFFERED=1"}
+	arguments := []string{"run", "--rm", "--name", containerName, "--network=none", "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges:true", "--user=65532:65532", "--umask=0000", "--pids-limit", strconv.Itoa(job.PIDs), "--memory", fmt.Sprintf("%dm", job.MemoryMB), "--cpus", fmt.Sprintf("%.3f", job.CPUs), "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m", "--mount", "type=bind,src=" + workspace + ",dst=/work", "--workdir", "/work", "--env", "PYTHONDONTWRITEBYTECODE=1", "--env", "PYTHONUNBUFFERED=1"}
 	keys := make([]string, 0, len(job.Env))
 	for key := range job.Env {
 		if !regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`).MatchString(key) {
