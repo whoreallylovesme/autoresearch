@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -30,14 +31,14 @@ type Usage struct {
 }
 
 type Estimate struct {
-	Provider        string
-	CostMicros      int64
-	InputTokens     int64
-	OutputTokens    int64
-	ReasoningTokens int64
-	CachedTokens    int64
-	Requests        int64
-	Finalization    bool
+	Provider        string `json:"provider,omitempty"`
+	CostMicros      int64  `json:"cost_micros"`
+	InputTokens     int64  `json:"input_tokens"`
+	OutputTokens    int64  `json:"output_tokens"`
+	ReasoningTokens int64  `json:"reasoning_tokens"`
+	CachedTokens    int64  `json:"cached_tokens"`
+	Requests        int64  `json:"requests"`
+	Finalization    bool   `json:"finalization"`
 }
 
 type ProviderLimits struct {
@@ -70,6 +71,12 @@ type Status struct {
 	Reserved                     Usage                    `json:"reserved"`
 	EstimatedRemainingCostMicros int64                    `json:"estimated_remaining_cost_micros"`
 	Providers                    map[string]AccountStatus `json:"providers,omitempty"`
+	OpenReservations             []ReservationStatus      `json:"open_reservations,omitempty"`
+}
+
+type ReservationStatus struct {
+	ID       string   `json:"id"`
+	Estimate Estimate `json:"estimate"`
 }
 
 type account struct {
@@ -86,6 +93,7 @@ type Manager struct {
 	providers    map[string]*account
 	reservations map[string]Estimate
 	nextID       uint64
+	persistence  func(Status) error
 }
 
 type Reservation struct {
@@ -148,6 +156,9 @@ func (m *Manager) Reserve(ctx context.Context, estimate Estimate) (Reservation, 
 	if estimate.Finalization {
 		m.phase = PhaseFinalizing
 	}
+	if err := m.persistLocked(); err != nil {
+		return Reservation{}, err
+	}
 	return reservation, nil
 }
 
@@ -197,18 +208,57 @@ func (m *Manager) settle(reservation Reservation, actual *Usage, uncertain bool)
 	if m.limits.SoftCostMicros > 0 && add(m.account.confirmed, m.account.uncertain, m.account.reserved).CostMicros >= m.limits.SoftCostMicros {
 		m.phase = PhaseFinalizing
 	}
-	return nil
+	return m.persistLocked()
 }
 
-func (m *Manager) Finalize() {
+func (m *Manager) Finalize() error {
 	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.phase = PhaseFinalizing
+	return m.persistLocked()
+}
+
+func (m *Manager) SetPersistence(persistence func(Status) error) {
+	m.mu.Lock()
+	m.persistence = persistence
 	m.mu.Unlock()
+}
+
+func (m *Manager) RestoreStatus(status Status) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.phase = status.Phase
+	m.account = account{confirmed: status.Confirmed, uncertain: status.Uncertain, reserved: status.Reserved}
+	m.providers = map[string]*account{}
+	for name, restored := range status.Providers {
+		m.providers[name] = &account{confirmed: restored.Confirmed, uncertain: restored.Uncertain, reserved: restored.Reserved}
+	}
+	for _, reservation := range status.OpenReservations {
+		estimate := reservation.Estimate.usage()
+		m.account.uncertain = add(m.account.uncertain, estimate)
+		if reservation.Estimate.Provider != "" {
+			providerAccount := m.providerAccount(reservation.Estimate.Provider)
+			providerAccount.uncertain = add(providerAccount.uncertain, estimate)
+		}
+		m.nextID++
+	}
+	m.reservations = map[string]Estimate{}
+}
+
+func (m *Manager) persistLocked() error {
+	if m.persistence == nil {
+		return nil
+	}
+	return m.persistence(m.statusLocked())
 }
 
 func (m *Manager) Status() Status {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	return m.statusLocked()
+}
+
+func (m *Manager) statusLocked() Status {
 	status := Status{
 		Phase: m.phase, Confirmed: m.account.confirmed, Uncertain: m.account.uncertain, Reserved: m.account.reserved,
 		EstimatedRemainingCostMicros: m.limits.HardCostMicros - add(m.account.confirmed, m.account.uncertain, m.account.reserved).CostMicros,
@@ -217,6 +267,10 @@ func (m *Manager) Status() Status {
 	for name, account := range m.providers {
 		status.Providers[name] = AccountStatus{Confirmed: account.confirmed, Uncertain: account.uncertain, Reserved: account.reserved}
 	}
+	for id, estimate := range m.reservations {
+		status.OpenReservations = append(status.OpenReservations, ReservationStatus{ID: id, Estimate: estimate})
+	}
+	sort.Slice(status.OpenReservations, func(i, j int) bool { return status.OpenReservations[i].ID < status.OpenReservations[j].ID })
 	return status
 }
 

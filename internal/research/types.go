@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/whoreallylovesme/autoresearch/internal/agent"
 	"github.com/whoreallylovesme/autoresearch/internal/budget"
 	"github.com/whoreallylovesme/autoresearch/internal/provider"
 )
@@ -54,10 +55,16 @@ type AgentStatus struct {
 }
 
 type Event struct {
-	Sequence  uint64          `json:"sequence"`
-	Type      string          `json:"type"`
-	Timestamp time.Time       `json:"timestamp"`
-	Actor     string          `json:"actor"`
-	TaskID    string          `json:"task_id,omitempty"`
-	Payload   json.RawMessage `json:"payload"`
+	ID            string          `json:"id"`
+	RunID         string          `json:"run_id"`
+	SchemaVersion int             `json:"schema_version"`
+	Sequence      uint64          `json:"sequence"`
+	Type          string          `json:"type"`
+	Timestamp     time.Time       `json:"timestamp"`
+	Actor         string          `json:"actor"`
+	TaskID        string          `json:"task_id,omitempty"`
+	Payload       json.RawMessage `json:"payload"`
 }
+
+type agentAssignment = agent.Assignment
+type agentResult = agent.Result

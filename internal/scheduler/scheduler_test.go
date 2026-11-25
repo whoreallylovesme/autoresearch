@@ -185,3 +185,41 @@ func assertNoLease(t *testing.T, s *scheduler.Scheduler) {
 		t.Fatalf("Lease() = %#v, %v, want ErrNoReadyTask", lease, err)
 	}
 }
+
+func TestRestoreTasksPreservesResultsAndRecoversRunningLeases(t *testing.T) {
+	s := scheduler.New(2, time.Minute)
+	oldFence := uint64(7)
+	if err := s.RestoreTasks([]scheduler.Task{
+		{ID: "done", Role: "worker", State: scheduler.StateCompleted, IdempotencyKey: "done-key", Result: scheduler.Result{Output: "kept"}},
+		{ID: "interrupted", Role: "worker", State: scheduler.StateRunning, Attempts: 1, MaxAttempts: 1, FencingToken: oldFence},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	completed, _ := s.Get("done")
+	if completed.Result.Output != "kept" || completed.State != scheduler.StateCompleted {
+		t.Fatalf("completed = %#v", completed)
+	}
+	if err := s.Submit(scheduler.Task{ID: "duplicate", Role: "worker", IdempotencyKey: "done-key"}); !errors.Is(err, scheduler.ErrDuplicateTask) {
+		t.Fatalf("duplicate restore key error = %v", err)
+	}
+	lease, err := s.Lease(context.Background(), scheduler.Worker{ID: "new", Roles: []string{"worker"}})
+	if err != nil || lease.Task.ID != "interrupted" || lease.FencingToken <= oldFence {
+		t.Fatalf("restored lease = %#v, %v", lease, err)
+	}
+}
+
+func TestHeartbeatExtendsActiveLease(t *testing.T) {
+	s := scheduler.New(1, 20*time.Millisecond)
+	submit(t, s, scheduler.Task{ID: "task", Role: "worker"})
+	lease, _ := s.Lease(context.Background(), scheduler.Worker{ID: "worker", Roles: []string{"worker"}})
+	extended := lease.ExpiresAt.Add(time.Hour)
+	if err := s.Heartbeat(lease.ID, lease.FencingToken, extended); err != nil {
+		t.Fatal(err)
+	}
+	if recovered := s.Recover(lease.ExpiresAt.Add(time.Nanosecond)); recovered != 0 {
+		t.Fatalf("heartbeat did not extend lease: %d", recovered)
+	}
+	if err := s.Heartbeat(lease.ID, lease.FencingToken+1, extended); !errors.Is(err, scheduler.ErrStaleLease) {
+		t.Fatalf("stale heartbeat error = %v", err)
+	}
+}

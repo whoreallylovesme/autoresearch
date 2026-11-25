@@ -4,12 +4,42 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/whoreallylovesme/autoresearch/internal/config"
 	"github.com/whoreallylovesme/autoresearch/internal/provider"
 )
 
 func DemoFactory() ProviderFactory {
+	base := demoFactory()
+	return func(agentID string, configuration config.AgentConfig) (provider.Provider, error) {
+		model, err := base(agentID, configuration)
+		if err != nil {
+			return nil, err
+		}
+		rawDelay := os.Getenv("AUTORESEARCH_DEMO_DELAY")
+		if rawDelay == "" {
+			return model, nil
+		}
+		delay, err := time.ParseDuration(rawDelay)
+		if err != nil || delay < 0 {
+			return nil, fmt.Errorf("invalid AUTORESEARCH_DEMO_DELAY %q", rawDelay)
+		}
+		return provider.NewMockHandler(func(ctx context.Context, request provider.Request) (provider.Response, error) {
+			timer := time.NewTimer(delay)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+				return model.Generate(ctx, request)
+			case <-ctx.Done():
+				return provider.Response{}, ctx.Err()
+			}
+		}), nil
+	}
+}
+
+func demoFactory() ProviderFactory {
 	return func(agentID string, configuration config.AgentConfig) (provider.Provider, error) {
 		if configuration.Role == "chief-scientist" {
 			return provider.NewMockHandler(demoChief), nil

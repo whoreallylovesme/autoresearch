@@ -176,3 +176,46 @@ func TestReserveHonorsCanceledContext(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestRestoreTreatsOpenReservationsAsUncertain(t *testing.T) {
+	manager := budget.NewManager(budget.Limits{HardCostMicros: 200})
+	confirmed, _ := manager.Reserve(context.Background(), budget.Estimate{CostMicros: 50})
+	if err := confirmed.Reconcile(budget.Usage{CostMicros: 40, Requests: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Reserve(context.Background(), budget.Estimate{Provider: "openai", CostMicros: 20, Requests: 1}); err != nil {
+		t.Fatal(err)
+	}
+	status := manager.Status()
+	if len(status.OpenReservations) != 1 {
+		t.Fatalf("open reservations = %#v", status.OpenReservations)
+	}
+	restored := budget.NewManager(budget.Limits{HardCostMicros: 200})
+	restored.RestoreStatus(status)
+	recovered := restored.Status()
+	if recovered.Uncertain.CostMicros != 20 || recovered.Confirmed.CostMicros != 40 || len(recovered.OpenReservations) != 0 {
+		t.Fatalf("recovered = %#v", recovered)
+	}
+	if recovered.Providers["openai"].Uncertain.CostMicros != 20 {
+		t.Fatalf("recovered provider = %#v", recovered.Providers["openai"])
+	}
+}
+
+func TestPersistenceHookRunsAfterReservationAndSettlement(t *testing.T) {
+	manager := budget.NewManager(budget.Limits{HardCostMicros: 100})
+	var snapshots []budget.Status
+	manager.SetPersistence(func(status budget.Status) error {
+		snapshots = append(snapshots, status)
+		return nil
+	})
+	reservation, err := manager.Reserve(context.Background(), budget.Estimate{CostMicros: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := reservation.Reconcile(budget.Usage{CostMicros: 5}); err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshots) != 2 || snapshots[0].Reserved.CostMicros != 10 || snapshots[1].Confirmed.CostMicros != 5 {
+		t.Fatalf("snapshots = %#v", snapshots)
+	}
+}

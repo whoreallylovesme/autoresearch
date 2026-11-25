@@ -93,6 +93,46 @@ func New(maxParallel int, leaseDuration time.Duration) *Scheduler {
 	return &Scheduler{maxParallel: maxParallel, leaseDuration: leaseDuration, tasks: map[string]*Task{}, keys: map[string]string{}, leases: map[string]*leaseRecord{}}
 }
 
+func (s *Scheduler) RestoreTasks(tasks []Task) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().UTC()
+	for _, task := range tasks {
+		if task.ID == "" || task.Role == "" {
+			return errors.New("restored task ID and role are required")
+		}
+		if _, exists := s.tasks[task.ID]; exists {
+			return ErrDuplicateTask
+		}
+		if task.MaxAttempts < 1 {
+			task.MaxAttempts = 1
+		}
+		if task.State == StateRunning {
+			task.State = StatePending
+			task.MaxAttempts = max(task.MaxAttempts, task.Attempts+1)
+			task.LastError = "recovered interrupted lease"
+			task.LeaseID = ""
+			task.AssignedAgent = ""
+		}
+		if task.State == StatePending && task.NextAttemptAt.IsZero() {
+			task.NextAttemptAt = now
+		}
+		if task.CreatedAt.IsZero() {
+			task.CreatedAt = now
+		}
+		s.nextFence = max(s.nextFence, task.FencingToken)
+		task.FencingToken = 0
+		copy := task
+		s.tasks[task.ID] = &copy
+		if task.IdempotencyKey != "" {
+			s.keys[task.IdempotencyKey] = task.ID
+		}
+	}
+	s.nextLease = uint64(len(tasks))
+	s.nextFence++
+	return nil
+}
+
 func (s *Scheduler) Submit(task Task) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -188,6 +228,20 @@ func (s *Scheduler) Lease(ctx context.Context, worker Worker) (*Lease, error) {
 	s.active++
 	result := lease
 	return &result, nil
+}
+
+func (s *Scheduler) Heartbeat(leaseID string, fencingToken uint64, expiresAt time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	record, _, err := s.activeLease(leaseID, fencingToken)
+	if err != nil {
+		return err
+	}
+	if expiresAt.Before(time.Now().UTC()) {
+		return errors.New("heartbeat expiry must be in the future")
+	}
+	record.lease.ExpiresAt = expiresAt
+	return nil
 }
 
 func (s *Scheduler) Complete(leaseID string, fencingToken uint64, result Result) error {

@@ -2,7 +2,6 @@ package research
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -36,6 +35,9 @@ type Runtime struct {
 	messages      []messaging.Message
 	events        []Event
 	report        string
+	persistence   *runtimePersistence
+	recovered     bool
+	persistentErr error
 	nextTask      uint64
 	nextFinding   uint64
 	workers       sync.WaitGroup
@@ -124,11 +126,16 @@ func (r *Runtime) Run(ctx context.Context) error {
 		r.workers.Add(1)
 		go r.workerLoop(runContext, id, current)
 	}
+	r.workers.Add(1)
+	go r.maintenanceLoop(runContext)
 	_, err := chief.runner.Execute(runContext, agent.Assignment{RunID: r.status.ID, Objective: r.configuration.Task.Objective, Restrictions: r.configuration.Task.Restrictions})
 	cancel()
 	r.workers.Wait()
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if err == nil && r.persistentErr != nil {
+		err = r.persistentErr
+	}
 	if err != nil {
 		if ctx.Err() != nil {
 			r.status.State = StateCancelled
@@ -168,15 +175,16 @@ func (r *Runtime) workerLoop(ctx context.Context, id string, current *instance) 
 		current.status.State = "running"
 		current.status.CurrentTask = lease.Task.ID
 		current.status.LastHeartbeat = time.Now().UTC()
+		r.persistTaskEventLocked(lease.Task.ID, "task.started", id, nil)
 		r.mu.Unlock()
-		result, executeErr := current.runner.Execute(ctx, agent.Assignment{RunID: r.status.ID, TaskID: lease.Task.ID, Objective: lease.Task.Description, Restrictions: r.configuration.Task.Restrictions})
+		result, executeErr := r.executeWithHeartbeat(ctx, current, lease, agent.Assignment{RunID: r.status.ID, TaskID: lease.Task.ID, Objective: lease.Task.Description, Restrictions: r.configuration.Task.Restrictions})
 		r.mu.Lock()
 		if executeErr != nil {
 			if ctx.Err() == nil {
 				_ = r.scheduler.Fail(lease.ID, lease.FencingToken, executeErr, true)
 				current.status.LastError = executeErr.Error()
 				current.status.State = "retrying"
-				r.recordEventLocked("task.failed", id, lease.Task.ID, map[string]string{"error": executeErr.Error()})
+				r.persistTaskEventLocked(lease.Task.ID, "task.failed", id, map[string]string{"error": executeErr.Error()})
 			}
 		} else {
 			if err := r.scheduler.Complete(lease.ID, lease.FencingToken, scheduler.Result{Output: result.Content}); err == nil {
@@ -186,10 +194,10 @@ func (r *Runtime) workerLoop(ctx context.Context, id string, current *instance) 
 				} else if current.configuration.Role == "brainstormer" {
 					kind = "speculation"
 				}
-				r.addFindingLocked(id, current.configuration.Role, lease.Task.ID, kind, result.Content, nil)
+				finding := r.addFindingLocked(id, current.configuration.Role, lease.Task.ID, kind, result.Content, nil)
 				current.status.State = "idle"
 				current.status.LastMeaningfulWork = time.Now().UTC()
-				r.recordEventLocked("task.completed", id, lease.Task.ID, nil)
+				r.completeTaskLocked(lease.Task.ID, id, finding)
 			}
 		}
 		current.status.CurrentTask = ""
@@ -244,16 +252,15 @@ func (r *Runtime) Report() string {
 }
 
 func (r *Runtime) recordEventLocked(eventType, actor, taskID string, payload any) {
-	encoded, _ := json.Marshal(payload)
-	if payload == nil {
-		encoded = json.RawMessage(`{}`)
-	}
-	r.events = append(r.events, Event{Sequence: uint64(len(r.events) + 1), Type: eventType, Timestamp: time.Now().UTC(), Actor: actor, TaskID: taskID, Payload: encoded})
+	event := r.newEventLocked(eventType, actor, taskID, payload)
+	r.persistRunEventLocked(event)
 }
 
-func (r *Runtime) addFindingLocked(agentID, role, taskID, kind, summary string, evidence []string) {
+func (r *Runtime) addFindingLocked(agentID, role, taskID, kind, summary string, evidence []string) Finding {
 	r.nextFinding++
-	r.findings = append(r.findings, Finding{ID: fmt.Sprintf("finding-%d", r.nextFinding), TaskID: taskID, AgentID: agentID, Role: role, Kind: kind, Summary: summary, Evidence: evidence, CreatedAt: time.Now().UTC()})
+	finding := Finding{ID: fmt.Sprintf("finding-%d", r.nextFinding), TaskID: taskID, AgentID: agentID, Role: role, Kind: kind, Summary: summary, Evidence: evidence, CreatedAt: time.Now().UTC()}
+	r.findings = append(r.findings, finding)
+	return finding
 }
 
 func micros(usd float64) int64 { return int64(usd * 1e6) }

@@ -81,8 +81,8 @@ func (r *Runtime) Execute(ctx context.Context, agentID, name string, arguments j
 		if name == "submit_criticism" {
 			kind = "criticism"
 		}
-		r.addFindingLocked(agentID, current.configuration.Role, input.TaskID, kind, input.Summary, input.Evidence)
-		r.recordEventLocked("finding.submitted", agentID, input.TaskID, nil)
+		finding := r.addFindingLocked(agentID, current.configuration.Role, input.TaskID, kind, input.Summary, input.Evidence)
+		r.persistFindingLocked(finding)
 		r.mu.Unlock()
 		return json.RawMessage(`{"accepted":true}`), nil
 	case "get_budget_status":
@@ -129,7 +129,7 @@ func (r *Runtime) Execute(ctx context.Context, agentID, name string, arguments j
 		}
 		r.mu.Lock()
 		r.messages = append(r.messages, message)
-		r.recordEventLocked("agent.message", agentID, "", message)
+		r.persistMessageLocked(message)
 		r.mu.Unlock()
 		return json.Marshal(map[string]string{"message_id": message.ID})
 	default:
@@ -166,7 +166,7 @@ func (r *Runtime) createTask(agentID string, input taskArguments) (json.RawMessa
 	if err := r.scheduler.Submit(task); err != nil {
 		return nil, err
 	}
-	r.recordEventLocked("task.created", agentID, input.TaskID, task)
+	r.persistTaskEventLocked(input.TaskID, "task.created", agentID, task)
 	return json.Marshal(map[string]string{"task_id": input.TaskID})
 }
 
@@ -227,6 +227,7 @@ func (r *Runtime) finalize(agentID string) (json.RawMessage, error) {
 	}
 	report.WriteString("\n## Limitations\n\nNo claim is objectively verified merely because an agent produced it.\n")
 	r.report = report.String()
+	r.persistArtifactLocked("research-report.md", "text/markdown", []byte(r.report))
 	r.status.State = StateCompleted
 	r.status.EndedAt = time.Now().UTC()
 	r.recordEventLocked("research.completed", agentID, "", map[string]int{"findings": len(r.findings)})
