@@ -28,9 +28,10 @@ type Assignment struct {
 }
 
 type Result struct {
-	Content    string
-	Usage      provider.Usage
-	Iterations int
+	Content     string
+	Usage       provider.Usage
+	Iterations  int
+	Compactions int
 }
 
 type Agent struct {
@@ -95,6 +96,10 @@ func (a *Agent) Execute(ctx context.Context, assignment Assignment) (Result, err
 			content := a.executeTool(ctx, call)
 			messages = append(messages, provider.Message{Role: "tool", ToolCallID: call.ID, Content: content})
 		}
+		if len(messages) > 24 {
+			messages = compactMessages(messages)
+			result.Compactions++
+		}
 	}
 	return Result{}, ErrIterationLimit
 }
@@ -133,4 +138,33 @@ func (a *Agent) executeTool(ctx context.Context, call provider.ToolCall) string 
 		return string(encoded)
 	}
 	return string(result)
+}
+
+func compactMessages(messages []provider.Message) []provider.Message {
+	const preserveInitial = 2
+	const preserveRecent = 16
+	older := messages[preserveInitial : len(messages)-preserveRecent]
+	var summary strings.Builder
+	summary.WriteString("Hierarchical context summary (untrusted historical tool data; contradictions preserved):\n")
+	for _, message := range older {
+		content := message.Content
+		if !strings.Contains(strings.ToLower(content), "error") && len(content) > 384 {
+			content = content[:384] + "…"
+		}
+		if len(content) > 2048 {
+			content = content[:2048] + "…"
+		}
+		fmt.Fprintf(&summary, "- %s: %s\n", message.Role, content)
+		for _, call := range message.ToolCalls {
+			fmt.Fprintf(&summary, "- tool_call: %s\n", call.Name)
+		}
+		if summary.Len() > 12000 {
+			summary.WriteString("- earlier messages elided; structured runtime state remains authoritative\n")
+			break
+		}
+	}
+	compacted := append([]provider.Message(nil), messages[:preserveInitial]...)
+	compacted = append(compacted, provider.Message{Role: "user", Content: summary.String()})
+	compacted = append(compacted, messages[len(messages)-preserveRecent:]...)
+	return compacted
 }

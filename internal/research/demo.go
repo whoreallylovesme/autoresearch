@@ -61,6 +61,9 @@ func demoChief(_ context.Context, request provider.Request) (provider.Response, 
 			steps++
 		}
 	}
+	if strings.Contains(strings.ToLower(demoUserText(request)), "literature review") && strings.Contains(strings.ToLower(demoUserText(request)), "computational experiment") {
+		return demoFullResearchChief(steps), nil
+	}
 	if strings.Contains(strings.ToLower(demoUserText(request)), "literature review") {
 		return demoLiteratureChief(steps), nil
 	}
@@ -156,6 +159,9 @@ func demoWorker(agentID string, configuration config.AgentConfig, request provid
 		if strings.Contains(text, "experiment-critic") {
 			content = "Criticism: benchmark artifact and objective verifier evidence were reviewed; only the deterministic sum is verified, not a broader scientific claim"
 		}
+		if strings.Contains(text, "full-research-critic") {
+			content = "Criticism: citation metadata and benchmark artifact were independently reviewed; interpretations remain unverified and only the deterministic sum is objectively supported"
+		}
 	case "brainstormer":
 		content = "Speculation: alternative scheduling directions require independent evaluation"
 	case "developer":
@@ -206,5 +212,34 @@ func demoExperimentChief(steps int) provider.Response {
 		return demoToolCall("finalize_research", `{}`)
 	default:
 		return provider.Response{Content: "Reproducible experiment and verification complete", Usage: provider.Usage{InputTokens: 10, OutputTokens: 4}}
+	}
+}
+
+func demoFullResearchChief(steps int) provider.Response {
+	switch steps {
+	case 0:
+		return demoToolCall("register_hypothesis", `{"id":"hypothesis-multi-agent-coordination","description":"Structured multi-agent coordination may improve reproducible scientific task decomposition; this remains unverified."}`)
+	case 1:
+		return demoToolCall("register_hypothesis", `{"id":"hypothesis-deterministic-sum","description":"The seeded Python implementation computes sum([1,2,3]) as 6 in the pinned sandbox."}`)
+	case 2:
+		return demoToolCall("delegate_task", `{"task_id":"paper-autogen","title":"AutoGen literature investigation","description":"Read AutoGen bibliographic metadata and record a cautious interpretation with citation","role":"baby-scientist","priority":10,"idempotency_key":"chief-literature-autogen"}`)
+	case 3:
+		return demoToolCall("delegate_task", `{"task_id":"paper-camel","title":"CAMEL literature investigation","description":"Read CAMEL bibliographic metadata and record a cautious interpretation with citation","role":"baby-scientist","priority":9,"idempotency_key":"chief-literature-camel"}`)
+	case 4:
+		return demoToolCall("delegate_task", `{"task_id":"experiment-design","title":"Design deterministic experiment","description":"Design a seeded Python computational experiment and its reproducibility record","role":"developer","priority":10,"idempotency_key":"chief-experiment-design"}`)
+	case 5:
+		code := "import json, os, pathlib\nseed = int(os.environ.get('SEED', '0'))\nanswer = sum([1, 2, 3])\npathlib.Path('output').mkdir(exist_ok=True)\npathlib.Path('output/metrics.json').write_text(json.dumps({'answer': answer, 'seed': seed}))\nprint(f'answer={answer}, seed={seed}')\n"
+		arguments, _ := json.Marshal(map[string]any{"id": "experiment-deterministic-sum", "hypothesis_id": "hypothesis-deterministic-sum", "filename": "experiment.py", "code": code, "command": []string{"python", "/work/experiment.py"}, "seed": 42, "dataset_version": "literal-list-v1", "dependencies": []string{"python-stdlib"}})
+		return demoToolCall("request_experiment", string(arguments))
+	case 6:
+		return demoToolCall("request_verification", `{"experiment_id":"experiment-deterministic-sum"}`)
+	case 7:
+		return demoToolCall("delegate_task", `{"task_id":"full-research-critic","title":"Independent full-research review","description":"Review full-research-critic citation metadata and experiment-critic benchmark evidence","role":"critic","dependencies":["paper-autogen","paper-camel","experiment-design"],"idempotency_key":"chief-full-research-critic"}`)
+	case 8:
+		return demoToolCall("query_knowledge", `{"query":"all findings","wait_for_tasks":true}`)
+	case 9:
+		return demoToolCall("finalize_research", `{}`)
+	default:
+		return provider.Response{Content: "Full autonomous research session complete", Usage: provider.Usage{InputTokens: 10, OutputTokens: 4}}
 	}
 }

@@ -114,3 +114,35 @@ func (d *recordingDispatcher) Execute(_ context.Context, _ string, _ string, arg
 func newRunner(p provider.Provider, dispatcher agent.ToolDispatcher, tools []string, iterations int) *agent.Agent {
 	return agent.New("agent-1", config.AgentConfig{Role: "baby-scientist", Prompt: config.PromptConfig{Content: "system"}, Tools: tools, Model: config.ModelConfig{Parameters: map[string]any{"max_output_tokens": 128}}}, p, dispatcher, iterations)
 }
+
+func TestAgentCompactsContextAndPreservesToolErrors(t *testing.T) {
+	var mock *provider.MockProvider
+	calls := 0
+	mock = provider.NewMockHandler(func(_ context.Context, request provider.Request) (provider.Response, error) {
+		if len(request.Messages) > 26 {
+			t.Fatalf("context was not compacted: %d messages", len(request.Messages))
+		}
+		calls++
+		if calls > 12 {
+			return provider.Response{Content: "complete"}, nil
+		}
+		return provider.Response{ToolCalls: []provider.ToolCall{{ID: "call", Name: "submit_finding", Arguments: json.RawMessage(`{}`)}}}, nil
+	})
+	dispatcher := &recordingDispatcher{result: json.RawMessage(`{"error":"contradictory evidence remains"}`)}
+	runner := newRunner(mock, dispatcher, []string{"submit_finding"}, 14)
+	result, err := runner.Execute(context.Background(), agent.Assignment{Objective: "long research"})
+	if err != nil || result.Compactions == 0 {
+		t.Fatalf("Execute() = %#v, %v", result, err)
+	}
+	foundError := false
+	for _, request := range mock.Requests() {
+		for _, message := range request.Messages {
+			if strings.Contains(message.Content, "contradictory evidence remains") {
+				foundError = true
+			}
+		}
+	}
+	if !foundError {
+		t.Fatal("compaction dropped contradictory tool evidence")
+	}
+}

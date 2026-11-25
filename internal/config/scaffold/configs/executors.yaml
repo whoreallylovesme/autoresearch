@@ -1,0 +1,14 @@
+version: 1
+default: mock
+executors:
+  mock:
+    type: mock
+    timeout: 30s
+  local:
+    type: local
+    enabled: false
+    workspace_root: ./data/workspaces
+    timeout: 5m
+    network: none
+    max_memory_mb: 512
+    max_cpus: 1

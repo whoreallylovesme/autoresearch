@@ -1,0 +1,4 @@
+version: 1
+command: ["go", "test", "./..."]
+timeout: 2m
+required_artifacts: [research-report]

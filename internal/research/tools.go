@@ -123,6 +123,21 @@ func (r *Runtime) Execute(ctx context.Context, agentID, name string, arguments j
 			}
 		}
 		return nil, errors.New("agent not found")
+	case "reprioritize_task":
+		var input struct {
+			TaskID   string `json:"task_id"`
+			Priority int    `json:"priority"`
+		}
+		if err := decode(arguments, &input); err != nil {
+			return nil, err
+		}
+		if err := r.scheduler.Reprioritize(input.TaskID, input.Priority); err != nil {
+			return nil, err
+		}
+		r.mu.Lock()
+		r.persistTaskEventLocked(input.TaskID, "task.reprioritized", agentID, map[string]int{"priority": input.Priority})
+		r.mu.Unlock()
+		return json.RawMessage(`{"reprioritized":true}`), nil
 	case "cancel_task":
 		var input struct {
 			TaskID string `json:"task_id"`

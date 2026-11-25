@@ -1,0 +1,26 @@
+version: 1
+name: local-hf-research-demo
+
+chief:
+  config: agents/hf-chief-scientist.yaml
+workers:
+  - config: agents/hf-baby-scientist.yaml
+    headcount: 2
+  - config: agents/hf-developer.yaml
+    headcount: 1
+  - config: agents/hf-critic.yaml
+    headcount: 1
+  - config: agents/hf-brainstormer.yaml
+    headcount: 1
+
+task: tasks/demo.yaml
+budget: budget.yaml
+executors: executors.yaml
+
+runtime:
+  autonomous: true
+  max_parallel_tasks: 4
+  checkpoint_interval: 10s
+  resume_on_restart: true
+  data_dir: ./data/local-hf
+  listen: 127.0.0.1:8080

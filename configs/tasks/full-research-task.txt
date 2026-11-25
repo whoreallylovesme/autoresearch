@@ -1,0 +1,1 @@
+Conduct a literature review and a reproducible computational experiment in one research session. Compare AutoGen and CAMEL as candidate coordination approaches, register a multi-agent research hypothesis and a deterministic-sum hypothesis, execute the seeded computational experiment, verify its metric, obtain independent criticism, and finalize a scientifically bounded report.

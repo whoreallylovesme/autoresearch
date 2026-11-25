@@ -27,7 +27,7 @@ func TestAPIStartsAndExposesResearchRun(t *testing.T) {
 	}
 	response.Body.Close()
 	waitForState(t, server.URL, research.StateCompleted)
-	for _, path := range []string{"/api/v1/run/status", "/api/v1/agents", "/api/v1/tasks", "/api/v1/budget", "/api/v1/report", "/api/v1/graph", "/api/v1/papers", "/api/v1/experiments", "/api/v1/events?after=2"} {
+	for _, path := range []string{"/api/v1/run/status", "/api/v1/agents", "/api/v1/tasks", "/api/v1/budget", "/api/v1/report", "/api/v1/graph", "/api/v1/papers", "/api/v1/experiments", "/api/v1/playback", "/metrics", "/api/v1/events?after=2"} {
 		response = request(t, http.MethodGet, server.URL+path, nil)
 		if response.StatusCode != http.StatusOK {
 			t.Fatalf("GET %s status = %d", path, response.StatusCode)

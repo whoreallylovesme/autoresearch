@@ -1,0 +1,1 @@
+Analyze how explicit task dependencies and deterministic scheduling improve the reproducibility of multi-agent computational research. Produce a small evidence-linked report and distinguish demonstrated behavior from untested claims.

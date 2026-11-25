@@ -16,6 +16,17 @@ import (
 	"time"
 )
 
+type RateLimiter interface {
+	wait(context.Context) error
+}
+
+func NewRateLimiter(requestsPerMinute int) RateLimiter {
+	if requestsPerMinute <= 0 {
+		return nil
+	}
+	return &requestLimiter{interval: time.Minute / time.Duration(requestsPerMinute)}
+}
+
 type RetryPolicy struct {
 	MaxAttempts    int
 	InitialBackoff time.Duration
@@ -31,6 +42,7 @@ type OpenAIOptions struct {
 	Capabilities      Capabilities
 	Retry             RetryPolicy
 	RequestsPerMinute int
+	Limiter           RateLimiter
 }
 
 type OpenAIProvider struct {
@@ -41,7 +53,7 @@ type OpenAIProvider struct {
 	client       *http.Client
 	capabilities Capabilities
 	retry        RetryPolicy
-	limiter      *requestLimiter
+	limiter      RateLimiter
 }
 
 type requestLimiter struct {
@@ -74,8 +86,9 @@ func NewOpenAI(options OpenAIOptions) (*OpenAIProvider, error) {
 		provider: options.Provider, model: options.Model, endpoint: parsed.String() + "/chat/completions",
 		apiKey: options.APIKey, client: options.HTTPClient, capabilities: options.Capabilities, retry: options.Retry,
 	}
-	if options.RequestsPerMinute > 0 {
-		provider.limiter = &requestLimiter{interval: time.Minute / time.Duration(options.RequestsPerMinute)}
+	provider.limiter = options.Limiter
+	if provider.limiter == nil && options.RequestsPerMinute > 0 {
+		provider.limiter = NewRateLimiter(options.RequestsPerMinute)
 	}
 	return provider, nil
 }

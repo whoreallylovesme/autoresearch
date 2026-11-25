@@ -1,0 +1,1 @@
+Use deterministic mocks, bundled bibliographic metadata, no paid APIs, no GPU, no network in the experiment, and no claims beyond the recorded evidence. Distinguish metadata interpretation, proposed hypotheses, and objectively verified computational results.

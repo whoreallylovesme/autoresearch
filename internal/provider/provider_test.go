@@ -200,3 +200,30 @@ func newTestClient(t *testing.T, baseURL, secret string) *provider.OpenAIProvide
 	}
 	return client
 }
+
+func TestOpenAISharedLimiterCoordinatesProviderInstances(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(writer, `{"id":"ok","choices":[{"message":{"role":"assistant","content":"done"}}]}`)
+	}))
+	defer server.Close()
+	limiter := provider.NewRateLimiter(6000)
+	newClient := func() *provider.OpenAIProvider {
+		client, err := provider.NewOpenAI(provider.OpenAIOptions{Provider: "openai", Model: "test", BaseURL: server.URL + "/v1", Capabilities: provider.Capabilities{SupportedParameters: []string{"max_output_tokens"}}, Retry: provider.RetryPolicy{MaxAttempts: 1}, Limiter: limiter})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return client
+	}
+	first := newClient()
+	second := newClient()
+	start := time.Now()
+	if _, err := first.Generate(context.Background(), provider.Request{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := second.Generate(context.Background(), provider.Request{}); err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(start); elapsed < 7*time.Millisecond {
+		t.Fatalf("shared limiter did not coordinate requests: %s", elapsed)
+	}
+}

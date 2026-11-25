@@ -1,0 +1,26 @@
+version: 1
+provider: hf-mock
+model: qwen2.5-0.5b-instruct
+base_url: http://127.0.0.1:8082/v1
+parameters:
+  temperature: 0
+  max_output_tokens: 256
+capabilities:
+  streaming: false
+  tools: true
+  structured_outputs: true
+retry:
+  max_attempts: 2
+  backoff: exponential
+  initial_interval: 100ms
+  max_interval: 1s
+timeout: 2m
+rate_limit:
+  requests_per_minute: 60
+pricing:
+  input_usd_per_million: 0
+  output_usd_per_million: 0
+  cached_usd_per_million: 0
+  reasoning_usd_per_million: 0
+estimation:
+  max_input_tokens: 4096

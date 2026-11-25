@@ -1,0 +1,22 @@
+version: 1
+name: autoresearch-project
+
+chief:
+  config: agents/chief-scientist.yaml
+workers:
+  - config: agents/baby-scientist.yaml
+    headcount: 2
+  - config: agents/critic.yaml
+    headcount: 1
+
+task: tasks/demo.yaml
+budget: budget.yaml
+executors: executors.yaml
+
+runtime:
+  autonomous: true
+  max_parallel_tasks: 4
+  checkpoint_interval: 10s
+  resume_on_restart: true
+  data_dir: ./data
+  listen: 127.0.0.1:8080

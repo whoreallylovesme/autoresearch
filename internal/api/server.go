@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/whoreallylovesme/autoresearch/internal/research"
+	"github.com/whoreallylovesme/autoresearch/internal/telemetry"
 )
 
 type Server struct {
@@ -41,11 +42,14 @@ func New(runtime *research.Runtime) *Server {
 	server.mux.HandleFunc("GET /api/v1/graph", server.graph)
 	server.mux.HandleFunc("GET /api/v1/papers", server.papers)
 	server.mux.HandleFunc("GET /api/v1/experiments", server.experiments)
+	server.mux.HandleFunc("GET /api/v1/playback", server.playback)
+	server.mux.HandleFunc("GET /metrics", server.metrics)
 	return server
 }
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("X-AutoResearch-API-Version", "1")
+	writer.Header().Set("Traceparent", telemetry.NewTraceparent())
 	s.mux.ServeHTTP(writer, request)
 }
 
@@ -211,6 +215,28 @@ func (s *Server) stream(writer http.ResponseWriter, request *http.Request) {
 		case <-ticker.C:
 		}
 	}
+}
+
+func (s *Server) metrics(writer http.ResponseWriter, request *http.Request) {
+	telemetry.Metrics(request.Context(), writer, s.runtime)
+}
+
+func (s *Server) playback(writer http.ResponseWriter, request *http.Request) {
+	until := uint64(0)
+	if raw := request.URL.Query().Get("until"); raw != "" {
+		parsed, err := strconv.ParseUint(raw, 10, 64)
+		if err != nil {
+			writeError(writer, http.StatusBadRequest, "until must be an unsigned event sequence")
+			return
+		}
+		until = parsed
+	}
+	frame, err := s.runtime.PlaybackContext(request.Context(), until)
+	if err != nil {
+		writeError(writer, http.StatusInternalServerError, "read playback")
+		return
+	}
+	writeJSON(writer, http.StatusOK, frame)
 }
 
 func (s *Server) experiments(writer http.ResponseWriter, request *http.Request) {

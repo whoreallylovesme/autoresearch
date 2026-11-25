@@ -309,6 +309,17 @@ func (s *Scheduler) Recover(now time.Time) int {
 	return recovered
 }
 
+func (s *Scheduler) Reprioritize(taskID string, priority int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	task, ok := s.tasks[taskID]
+	if !ok {
+		return ErrTaskNotFound
+	}
+	task.Priority = priority
+	return nil
+}
+
 func (s *Scheduler) Cancel(taskID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

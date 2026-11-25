@@ -1,0 +1,9 @@
+version: 1
+name: full-autonomous-research-demo
+task: ./full-research-task.txt
+criterion_of_end: ./full-research-completion.txt
+restrictions: ./full-research-restrictions.txt
+deliverables: [research-report, literature-review, reproducible-experiments, source-code]
+verification:
+  type: benchmark
+  config: ./experiment-verification.yaml

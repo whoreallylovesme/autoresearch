@@ -37,12 +37,20 @@ func run(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	apiURL := flags.String("api", "", "runtime API base URL")
 	configPath := flags.String("config", "configs/autoresearch.yaml", "main configuration path")
+	directory := flags.String("directory", "autoresearch-project", "project directory for init")
 	follow := flags.Bool("follow", false, "follow event stream")
 	timeout := flags.Duration("timeout", 30*time.Minute, "maximum time to wait for research")
 	message := flags.String("message", "", "operator chat message")
 	directive := flags.Bool("directive", false, "send an authoritative operator directive")
 	if err := flags.Parse(arguments); err != nil {
 		return err
+	}
+	if command == "init" {
+		if err := config.Scaffold(*directory); err != nil {
+			return err
+		}
+		fmt.Printf("initialized AutoResearch project in %s\n", *directory)
+		return nil
 	}
 	if command == "validate" {
 		configuration, err := config.Load(*configPath)

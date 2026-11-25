@@ -1,0 +1,9 @@
+version: 1
+name: deterministic-scheduling-demo
+task: ./task.txt
+criterion_of_end: ./completion-criteria.txt
+restrictions: ./restrictions.txt
+deliverables: [research-report, reproducible-experiments]
+verification:
+  type: custom-command
+  config: ./verification.yaml

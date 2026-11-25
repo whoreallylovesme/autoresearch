@@ -150,6 +150,9 @@ func (r *Runtime) Run(ctx context.Context) error {
 		err = r.persistentErr
 	}
 	if err != nil {
+		if r.status.State == StateCancelled {
+			return context.Canceled
+		}
 		if ctx.Err() != nil {
 			r.status.State = StateCancelled
 			r.recordEventLocked("research.cancelled", "runtime", "", nil)

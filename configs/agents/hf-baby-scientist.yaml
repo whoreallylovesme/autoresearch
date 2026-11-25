@@ -1,0 +1,14 @@
+version: 1
+role: baby-scientist
+model: ../models/hf-mock.yaml
+prompt:
+  type: custom
+  path: ../../prompts/baby-scientist.md
+tools: [search_papers, read_paper, query_knowledge, register_hypothesis, submit_finding, send_message]
+context:
+  strategy: hierarchical-summary
+  persistent_memory: true
+permissions:
+  network: restricted
+  filesystem: workspace-only
+  shell: false

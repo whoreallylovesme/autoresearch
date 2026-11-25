@@ -451,7 +451,7 @@ func validateModel(model *ModelConfig) error {
 		model.BaseURL = defaultString(model.BaseURL, "https://api.openai.com/v1")
 	case "kimi":
 		model.BaseURL = defaultString(model.BaseURL, "https://api.moonshot.ai/v1")
-	case "openai-compatible":
+	case "openai-compatible", "hf-mock":
 		allowed = append(allowed, "temperature")
 	default:
 		return fmt.Errorf("unsupported provider %q", model.Provider)

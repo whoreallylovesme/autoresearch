@@ -1,0 +1,18 @@
+version: 1
+provider: mock
+model: deterministic-research-v1
+parameters:
+  temperature: 0
+  max_output_tokens: 2048
+capabilities:
+  streaming: true
+  tools: true
+  structured_outputs: true
+retry:
+  max_attempts: 1
+  backoff: exponential
+  initial_interval: 10ms
+  max_interval: 100ms
+timeout: 30s
+rate_limit:
+  requests_per_minute: 600

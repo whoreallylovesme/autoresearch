@@ -223,3 +223,19 @@ func TestHeartbeatExtendsActiveLease(t *testing.T) {
 		t.Fatalf("stale heartbeat error = %v", err)
 	}
 }
+
+func TestReprioritizeChangesLeaseOrder(t *testing.T) {
+	s := scheduler.New(1, time.Minute)
+	submit(t, s, scheduler.Task{ID: "low", Role: "worker", Priority: 1})
+	submit(t, s, scheduler.Task{ID: "high", Role: "worker", Priority: 2})
+	if err := s.Reprioritize("low", 10); err != nil {
+		t.Fatal(err)
+	}
+	lease, err := s.Lease(context.Background(), scheduler.Worker{ID: "worker", Roles: []string{"worker"}})
+	if err != nil || lease.Task.ID != "low" {
+		t.Fatalf("Lease() = %#v, %v", lease, err)
+	}
+	if err := s.Reprioritize("missing", 1); !errors.Is(err, scheduler.ErrTaskNotFound) {
+		t.Fatalf("error = %v", err)
+	}
+}
