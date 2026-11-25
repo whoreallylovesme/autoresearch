@@ -21,7 +21,7 @@ func TestPlaybackReconstructsResearchTimeline(t *testing.T) {
 	if err := runtime.Run(ctx); err != nil {
 		t.Fatal(err)
 	}
-	early, err := runtime.Playback(5)
+	early, err := runtime.Playback(2)
 	if err != nil {
 		t.Fatal(err)
 	}
