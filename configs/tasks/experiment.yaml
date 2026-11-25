@@ -1,0 +1,9 @@
+version: 1
+name: reproducible-experiment-demo
+task: ./experiment-task.txt
+criterion_of_end: ./experiment-completion.txt
+restrictions: ./experiment-restrictions.txt
+deliverables: [research-report, reproducible-experiments, source-code]
+verification:
+  type: benchmark
+  config: ./experiment-verification.yaml

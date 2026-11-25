@@ -1,0 +1,1 @@
+Propose and run a reproducible computational experiment testing whether a seeded Python implementation computes the sum [1, 2, 3] as 6. Register a hypothesis, isolate execution, collect artifacts, independently verify the benchmark metric, and obtain scientific criticism without overstating the result.

@@ -81,3 +81,20 @@ func TestGraphSnapshotRoundTrip(t *testing.T) {
 		t.Fatalf("restored = %#v", restored.Nodes())
 	}
 }
+
+func TestReviseNodeAppendsHistory(t *testing.T) {
+	g := graph.New()
+	node := graph.Node{ID: "experiment", RunID: "run", Type: graph.NodeExperiment, Author: "chief", Status: "running", Description: "Experiment"}
+	if err := g.AddNode(node); err != nil {
+		t.Fatal(err)
+	}
+	node.Status = "verified"
+	node.Artifacts = []string{"artifact-1"}
+	if err := g.ReviseNode(node); err != nil {
+		t.Fatal(err)
+	}
+	updated, _ := g.Node(node.ID)
+	if updated.Status != "verified" || updated.Revision != 2 || len(g.Revisions(node.ID)) != 2 {
+		t.Fatalf("updated = %#v", updated)
+	}
+}

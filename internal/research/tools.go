@@ -50,6 +50,9 @@ func (r *Runtime) Definitions(agentID string) []provider.ToolDefinition {
 }
 
 func (r *Runtime) Execute(ctx context.Context, agentID, name string, arguments json.RawMessage) (json.RawMessage, error) {
+	if handled, result, err := r.executeExecutionTool(ctx, agentID, name, arguments); handled {
+		return result, err
+	}
 	if handled, result, err := r.executeScienceTool(ctx, agentID, name, arguments); handled {
 		return result, err
 	}
@@ -222,6 +225,17 @@ func (r *Runtime) finalize(agentID string) (json.RawMessage, error) {
 			return nil, fmt.Errorf("task %s is %s, not completed", task.ID, task.State)
 		}
 	}
+	if r.execution != nil {
+		experiments, err := r.execution.manager.List(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		for _, experiment := range experiments {
+			if experiment.Status != "verified" {
+				return nil, fmt.Errorf("experiment %s is %s, not verified", experiment.ID, experiment.Status)
+			}
+		}
+	}
 	criticism := false
 	for _, finding := range r.findings {
 		if finding.Kind == "criticism" {
@@ -242,6 +256,19 @@ func (r *Runtime) finalize(agentID string) (json.RawMessage, error) {
 		fmt.Fprintf(&report, "- **%s** (`%s`, %s): %s\n", finding.TaskID, finding.AgentID, finding.Kind, finding.Summary)
 		if len(finding.Evidence) > 0 {
 			fmt.Fprintf(&report, "  - Evidence: %s\n", strings.Join(finding.Evidence, "; "))
+		}
+	}
+	if r.execution != nil {
+		experiments, _ := r.execution.manager.List(context.Background())
+		if len(experiments) > 0 {
+			report.WriteString("\n## Experiments and verification\n\n")
+		}
+		for _, experiment := range experiments {
+			fmt.Fprintf(&report, "- **%s** (%s): metrics `%v`", experiment.ID, experiment.Status, experiment.Metrics)
+			if experiment.Verification != nil {
+				fmt.Fprintf(&report, "; verification `%s` passed=%t (%s)", experiment.Verification.Type, experiment.Verification.Passed, experiment.Verification.Details)
+			}
+			report.WriteString("\n")
 		}
 	}
 	report.WriteString("\n## Limitations\n\nNo claim is objectively verified merely because an agent produced it.\n")
@@ -285,17 +312,20 @@ func toolDescription(name string) string {
 
 func toolSchema(name string) json.RawMessage {
 	schemas := map[string]string{
-		"create_task":         `{"type":"object","required":["title","description","role","idempotency_key"],"properties":{"task_id":{"type":"string"},"title":{"type":"string"},"description":{"type":"string"},"role":{"type":"string"},"priority":{"type":"integer"},"dependencies":{"type":"array","items":{"type":"string"}},"idempotency_key":{"type":"string"}},"additionalProperties":false}`,
-		"delegate_task":       `{"type":"object","required":["title","description","role","idempotency_key"],"properties":{"task_id":{"type":"string"},"title":{"type":"string"},"description":{"type":"string"},"role":{"type":"string"},"priority":{"type":"integer"},"dependencies":{"type":"array","items":{"type":"string"}},"idempotency_key":{"type":"string"}},"additionalProperties":false}`,
-		"query_knowledge":     `{"type":"object","properties":{"query":{"type":"string"},"wait_for_tasks":{"type":"boolean"}},"additionalProperties":false}`,
-		"submit_finding":      `{"type":"object","required":["task_id","summary"],"properties":{"task_id":{"type":"string"},"summary":{"type":"string"},"evidence":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}`,
-		"submit_criticism":    `{"type":"object","required":["task_id","summary"],"properties":{"task_id":{"type":"string"},"summary":{"type":"string"},"evidence":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}`,
-		"search_papers":       `{"type":"object","required":["query"],"properties":{"query":{"type":"string"},"limit":{"type":"integer"}},"additionalProperties":false}`,
-		"read_paper":          `{"type":"object","required":["paper_id"],"properties":{"paper_id":{"type":"string"}},"additionalProperties":false}`,
-		"register_hypothesis": `{"type":"object","required":["id","description"],"properties":{"id":{"type":"string"},"description":{"type":"string"},"task_ids":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}`,
-		"get_agent_status":    `{"type":"object","required":["agent_id"],"properties":{"agent_id":{"type":"string"}},"additionalProperties":false}`,
-		"cancel_task":         `{"type":"object","required":["task_id"],"properties":{"task_id":{"type":"string"}},"additionalProperties":false}`,
-		"send_message":        `{"type":"object","required":["recipient","payload"],"properties":{"recipient":{"type":"string"},"payload":{"type":"object"}},"additionalProperties":false}`,
+		"create_task":          `{"type":"object","required":["title","description","role","idempotency_key"],"properties":{"task_id":{"type":"string"},"title":{"type":"string"},"description":{"type":"string"},"role":{"type":"string"},"priority":{"type":"integer"},"dependencies":{"type":"array","items":{"type":"string"}},"idempotency_key":{"type":"string"}},"additionalProperties":false}`,
+		"delegate_task":        `{"type":"object","required":["title","description","role","idempotency_key"],"properties":{"task_id":{"type":"string"},"title":{"type":"string"},"description":{"type":"string"},"role":{"type":"string"},"priority":{"type":"integer"},"dependencies":{"type":"array","items":{"type":"string"}},"idempotency_key":{"type":"string"}},"additionalProperties":false}`,
+		"query_knowledge":      `{"type":"object","properties":{"query":{"type":"string"},"wait_for_tasks":{"type":"boolean"}},"additionalProperties":false}`,
+		"submit_finding":       `{"type":"object","required":["task_id","summary"],"properties":{"task_id":{"type":"string"},"summary":{"type":"string"},"evidence":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}`,
+		"submit_criticism":     `{"type":"object","required":["task_id","summary"],"properties":{"task_id":{"type":"string"},"summary":{"type":"string"},"evidence":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}`,
+		"search_papers":        `{"type":"object","required":["query"],"properties":{"query":{"type":"string"},"limit":{"type":"integer"}},"additionalProperties":false}`,
+		"read_paper":           `{"type":"object","required":["paper_id"],"properties":{"paper_id":{"type":"string"}},"additionalProperties":false}`,
+		"register_hypothesis":  `{"type":"object","required":["id","description"],"properties":{"id":{"type":"string"},"description":{"type":"string"},"task_ids":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}`,
+		"request_experiment":   `{"type":"object","required":["id","hypothesis_id","filename","code","command"],"properties":{"id":{"type":"string"},"hypothesis_id":{"type":"string"},"filename":{"type":"string"},"code":{"type":"string"},"command":{"type":"array","items":{"type":"string"}},"seed":{"type":"integer"},"dataset_version":{"type":"string"},"dependencies":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}`,
+		"request_verification": `{"type":"object","required":["experiment_id"],"properties":{"experiment_id":{"type":"string"}},"additionalProperties":false}`,
+		"inspect_artifact":     `{"type":"object","required":["experiment_id"],"properties":{"experiment_id":{"type":"string"}},"additionalProperties":false}`,
+		"get_agent_status":     `{"type":"object","required":["agent_id"],"properties":{"agent_id":{"type":"string"}},"additionalProperties":false}`,
+		"cancel_task":          `{"type":"object","required":["task_id"],"properties":{"task_id":{"type":"string"}},"additionalProperties":false}`,
+		"send_message":         `{"type":"object","required":["recipient","payload"],"properties":{"recipient":{"type":"string"},"payload":{"type":"object"}},"additionalProperties":false}`,
 	}
 	if schema := schemas[name]; schema != "" {
 		return json.RawMessage(schema)

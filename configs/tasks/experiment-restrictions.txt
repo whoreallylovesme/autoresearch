@@ -1,0 +1,1 @@
+Use the pinned Python image, no network, no GPU, no paid APIs, no secrets, and no host filesystem writes outside the dedicated workspace. The demonstration proves execution and verification mechanics, not a broader scientific claim.

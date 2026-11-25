@@ -129,6 +129,23 @@ func (g *Graph) AddNode(node Node) error {
 	return g.persistLocked()
 }
 
+func (g *Graph) ReviseNode(node Node) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	current, ok := g.nodes[node.ID]
+	if !ok || current.RunID != node.RunID || current.Type != node.Type {
+		return errors.New("node revision must preserve identity, run, and type")
+	}
+	if node.Author == "" || node.Description == "" {
+		return errors.New("node revision requires author and description")
+	}
+	node.CreatedAt = current.CreatedAt
+	node.Revision = current.Revision + 1
+	g.nodes[node.ID] = cloneNode(node)
+	g.revisions[node.ID] = append(g.revisions[node.ID], Revision{NodeID: node.ID, Revision: node.Revision, Author: node.Author, CreatedAt: time.Now().UTC(), Node: cloneNode(node)})
+	return g.persistLocked()
+}
+
 func (g *Graph) AddEdge(edge Edge) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()

@@ -46,6 +46,10 @@ func NewPersistent(configuration *config.Config, factory ProviderFactory) (*Runt
 		store.Close()
 		return nil, err
 	}
+	if err := runtime.attachExecution(store, artifacts); err != nil {
+		store.Close()
+		return nil, err
+	}
 	runtime.budget.SetPersistence(func(status budget.Status) error {
 		return store.SaveBudget(context.Background(), runtime.status.ID, status)
 	})

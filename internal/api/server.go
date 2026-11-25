@@ -35,6 +35,7 @@ func New(runtime *research.Runtime) *Server {
 	server.mux.HandleFunc("GET /api/v1/report", server.report)
 	server.mux.HandleFunc("GET /api/v1/graph", server.graph)
 	server.mux.HandleFunc("GET /api/v1/papers", server.papers)
+	server.mux.HandleFunc("GET /api/v1/experiments", server.experiments)
 	return server
 }
 
@@ -157,6 +158,15 @@ func (s *Server) stream(writer http.ResponseWriter, request *http.Request) {
 		case <-ticker.C:
 		}
 	}
+}
+
+func (s *Server) experiments(writer http.ResponseWriter, request *http.Request) {
+	experiments, err := s.runtime.Experiments(request.Context())
+	if err != nil {
+		writeError(writer, http.StatusInternalServerError, "read experiments")
+		return
+	}
+	writeJSON(writer, http.StatusOK, map[string]any{"experiments": experiments})
 }
 
 func (s *Server) graph(writer http.ResponseWriter, _ *http.Request) {

@@ -1,0 +1,1 @@
+Complete when the sandboxed experiment produces a durable metrics artifact, the objective benchmark verifier passes with answer >= 6, the hypothesis is verified from that evidence, and independent criticism is recorded.

@@ -1,0 +1,18 @@
+version: 1
+default: docker
+executors:
+  docker:
+    type: docker
+    enabled: true
+    workspace_root: ./data/workspaces
+    timeout: 1m
+    network: none
+    max_memory_mb: 128
+    max_cpus: 0.5
+    pids: 64
+    image: python@sha256:191083cdf6c7bda8c76158983163ead5d5cf7b77cf3033e805bb0f5296f51b4b
+    allowed_images:
+      - python@sha256:191083cdf6c7bda8c76158983163ead5d5cf7b77cf3033e805bb0f5296f51b4b
+  mock:
+    type: mock
+    timeout: 30s

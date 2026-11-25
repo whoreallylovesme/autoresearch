@@ -39,6 +39,7 @@ type Runtime struct {
 	recovered     bool
 	persistentErr error
 	science       *runtimeScience
+	execution     *runtimeExecution
 	nextTask      uint64
 	nextFinding   uint64
 	workers       sync.WaitGroup

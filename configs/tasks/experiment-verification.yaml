@@ -1,0 +1,6 @@
+version: 1
+metric: answer
+direction: min
+threshold: 6
+timeout: 1m
+required_artifacts: [metrics.json]

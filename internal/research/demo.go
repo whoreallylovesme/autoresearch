@@ -61,6 +61,9 @@ func demoChief(_ context.Context, request provider.Request) (provider.Response, 
 	if strings.Contains(strings.ToLower(demoUserText(request)), "literature review") {
 		return demoLiteratureChief(steps), nil
 	}
+	if strings.Contains(strings.ToLower(demoUserText(request)), "computational experiment") {
+		return demoExperimentChief(steps), nil
+	}
 	switch steps {
 	case 0:
 		return demoToolCall("delegate_task", `{"task_id":"research-a","title":"Research A","description":"Investigate deterministic scheduling","role":"baby-scientist","priority":10,"idempotency_key":"chief-research-a"}`), nil
@@ -147,6 +150,9 @@ func demoWorker(agentID string, configuration config.AgentConfig, request provid
 		if strings.Contains(text, "literature-critic") {
 			content = "Criticism: citations resolve to bundled arXiv metadata; no full-text review, effectiveness conclusion, or experimental verification is claimed"
 		}
+		if strings.Contains(text, "experiment-critic") {
+			content = "Criticism: benchmark artifact and objective verifier evidence were reviewed; only the deterministic sum is verified, not a broader scientific claim"
+		}
 	case "brainstormer":
 		content = "Speculation: alternative scheduling directions require independent evaluation"
 	case "developer":
@@ -175,4 +181,27 @@ func demoTaskID(request provider.Request) string {
 	}
 	remainder := text[index+len(marker):]
 	return strings.Fields(remainder)[0]
+}
+
+func demoExperimentChief(steps int) provider.Response {
+	switch steps {
+	case 0:
+		return demoToolCall("register_hypothesis", `{"id":"hypothesis-deterministic-sum","description":"The seeded Python implementation computes sum([1,2,3]) as 6 in the pinned sandbox."}`)
+	case 1:
+		return demoToolCall("delegate_task", `{"task_id":"experiment-design","title":"Design deterministic experiment","description":"Design a seeded Python computational experiment and its reproducibility record","role":"developer","priority":10,"idempotency_key":"chief-experiment-design"}`)
+	case 2:
+		code := "import json, os, pathlib\nseed = int(os.environ.get('SEED', '0'))\nanswer = sum([1, 2, 3])\npathlib.Path('output').mkdir(exist_ok=True)\npathlib.Path('output/metrics.json').write_text(json.dumps({'answer': answer, 'seed': seed}))\nprint(f'answer={answer}, seed={seed}')\n"
+		arguments, _ := json.Marshal(map[string]any{"id": "experiment-deterministic-sum", "hypothesis_id": "hypothesis-deterministic-sum", "filename": "experiment.py", "code": code, "command": []string{"python", "/work/experiment.py"}, "seed": 42, "dataset_version": "literal-list-v1", "dependencies": []string{"python-stdlib"}})
+		return demoToolCall("request_experiment", string(arguments))
+	case 3:
+		return demoToolCall("request_verification", `{"experiment_id":"experiment-deterministic-sum"}`)
+	case 4:
+		return demoToolCall("delegate_task", `{"task_id":"experiment-critic","title":"Review experiment evidence","description":"Review the experiment-critic evidence, benchmark artifact, and verification limitations","role":"critic","dependencies":["experiment-design"],"idempotency_key":"chief-experiment-critic"}`)
+	case 5:
+		return demoToolCall("query_knowledge", `{"query":"all findings","wait_for_tasks":true}`)
+	case 6:
+		return demoToolCall("finalize_research", `{}`)
+	default:
+		return provider.Response{Content: "Reproducible experiment and verification complete", Usage: provider.Usage{InputTokens: 10, OutputTokens: 4}}
+	}
 }
