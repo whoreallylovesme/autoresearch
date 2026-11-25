@@ -4,51 +4,51 @@ Last updated: 2026-11-25
 
 ## Current status
 
-Milestones 0–3 are complete. Milestone 4 (experimental execution) is next.
+Milestones 0–4 are complete. Milestone 5 (web control center) is next.
 
 ## Implemented and verified
 
-### Autonomous runtime and reliability
+### Runtime, persistence, and science
 
-- Strict YAML, replaceable native agents, deterministic and OpenAI-compatible providers, concurrent budgets, priority/dependency scheduling, and role-scoped tools.
-- SQLite WAL migrations, transactional task/finding/message/event completion, durable budget recovery, SHA-256 artifacts, heartbeats, checkpoints, and fresh fencing after restart.
-- Process-level forced-`SIGKILL` recovery tests for both runtime and the actual `researchd`.
+- Strict configuration, native agents, replaceable providers, concurrent budgets, scheduler leases, and structured messages.
+- SQLite WAL, transactional events/snapshots, durable budgets/messages, artifact integrity, checkpoints, and forced-`SIGKILL` recovery against the real daemon.
+- Revisioned research graph, verifier-gated hypotheses, FTS5 knowledge, structured claims, cached arXiv/PDF fetching, and cited literature review.
 
-### Scientific research
+### Experimental execution
 
-- Typed research graph nodes/edges with revisions, persistent snapshots, and API access.
-- Hypothesis lifecycle where `verified` requires a supported hypothesis plus successful verifier evidence and artifact references.
-- Paper metadata, DOI/arXiv normalization and deduplication, paper claims vs interpretations vs verified conclusions, source locations, and negative-result claim types.
-- SQLite FTS5 over titles, abstracts, full text, and claims, including persistence after reopen.
-- Centralized Paper Fetcher with shared query cache, singleflight search/download, arXiv Atom parsing, attribution, retries, rate limits, and bounded PDF downloads.
-- SHA-256 PDF artifacts and isolated `pdftotext` subprocess extraction with timeout, output limits, and no secret environment.
-- Deterministic literature review with two researchers, two cited interpretation claims, a hypothesis, independent criticism, a persistent conclusion, and explicit metadata-only limitations.
-- `GET /api/v1/graph` and `GET /api/v1/papers` contracts and `make literature-demo` acceptance command.
+- Docker executor with pinned image allowlists, no network, read-only root, dropped capabilities, no-new-privileges, numeric non-root user, CPU/memory/PID/time limits, and isolated workspace mounts.
+- Asynchronous jobs, cancellation, status, streaming logs, exit codes, and bounded artifact collection with symlink/path-traversal protection.
+- Git worktree manager that preserves uncommitted work instead of force-deleting it.
+- Benchmark and custom-command verifiers, including explicit metric directions and exit-code evidence.
+- Experiment records with code/configuration hashes, seeds, hardware, dependencies, commands, logs, metrics, artifacts, and verification outcomes; failed and refuted results persist.
+- Autonomous experiment demo that registers a hypothesis, writes and executes seeded Python, verifies `answer=6`, revises the graph, obtains criticism, and persists the verified result after reopen.
+- SSH adapter with destination allowlists, BatchMode, strict host-key checking, operator-owned identity files, remote PID/exit records, logs, cancellation, artifact collection, and race-tested concurrent status polling.
+- `GET /api/v1/experiments` and `make experiment-demo` acceptance command.
 
 ## Verification evidence
 
-Required VPS checks remain `make fmt-check`, `make lint`, `make test`, `make test-integration`, `make validate`, and `make run-demo`; `make literature-demo` additionally proves the scientific acceptance scenario. Tests use race detection, local HTTP fixtures, a fake PDF extractor command, real SQLite/FTS5, and no paid APIs.
+Required checks are `make fmt-check`, `make lint`, `make test`, `make test-integration`, `make validate`, `make run-demo`, `make literature-demo`, and `make experiment-demo`. Docker tests execute real containers on the VPS. SSH tests use a local fake transport and do not contact private infrastructure. All Go tests use race detection; no paid API or GPU is used.
 
 ## Known limitations
 
-- The literature demo is metadata-level and does not claim full-text review or scientific effectiveness. Live arXiv retrieval is implemented but covered by local fixtures rather than external integration tests.
-- Only arXiv and deterministic static sources are active; OpenAlex, Semantic Scholar, Crossref, and PubMed remain extensions.
-- Sandboxed experiments, Git worktrees, verifiers, SSH/Slurm execution, and full experiment reproducibility records are not implemented.
+- Development uses root-managed Docker with restricted containers. Rootless Docker and production AppArmor/seccomp profiles remain hardening work.
+- SSH is covered by local protocol fixtures, not a real remote-server integration test. Remote cancellation is best-effort. Slurm is not implemented.
+- Interrupted Docker/SSH experiments are marked failed on restart rather than transparently resumed; tasks remain at-least-once and require idempotent retry.
 - NiceGUI dashboards, persistent operator chat, and playback are not implemented.
 - `pause`, `resume`, `finalize`, and `chat` CLI commands remain reserved but unavailable.
-- Real providers have local contract tests only; no paid live call has been attempted.
+- Real model providers have local contract tests only; no paid live call has been attempted.
 
 ## Blockers
 
-None for Milestone 4. Docker is available on the development VPS. Remote SSH/Slurm resources require separate explicit configuration and must not receive host credentials by default.
+None for Milestone 5. The runtime exposes versioned REST/SSE contracts for the Python application.
 
 ## Next implementation steps
 
-1. Add experiment and verification domain records with immutable logs, metrics, commands, revisions, and artifact links.
-2. Implement restricted Docker execution with CPU/memory/PID/time/network/workspace limits and no host socket or secrets.
-3. Add Git worktree isolation and unit-test/custom-command/benchmark verifiers.
-4. Demonstrate an autonomous reproducible computational experiment, then add explicit SSH execution and optional Slurm adapters.
+1. Build the NiceGUI control center with overview, agents, budgets, events, experiments, graph, and report views.
+2. Add operator stop control and persistent Chief Scientist chat/directives through the same API.
+3. Add Cytoscape.js interactive graph and Plotly budget charts with resumable live updates.
+4. Add Python tests, deployment configuration, and browser acceptance checks.
 
 ## Next handoff
 
-Use the remote host and keep private data outside Git. Integrated source is `/opt/autoresearch`; milestone worktrees are siblings. Read the roadmap, security model, testing guide, and this file before implementation. Model claims never constitute experiment verification.
+Use the remote VPS for all builds, tests, model serving, and application execution. Integrated source is `/opt/autoresearch`; milestone worktrees are siblings. Keep private runtime state outside Git and do not expose loopback APIs publicly without authentication.

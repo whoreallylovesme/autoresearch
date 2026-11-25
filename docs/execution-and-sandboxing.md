@@ -1,5 +1,7 @@
 # Execution and Sandboxing
 
+**Implementation status:** Pinned Docker execution, Git worktrees, bounded logs/artifacts, benchmark and custom-command verifiers, and an SSH adapter are implemented. Docker uses no network, read-only root, dropped capabilities, no-new-privileges, numeric non-root UID, CPU/memory/PID/time limits, and workspace-only writes. The development VPS uses root-managed Docker with these container restrictions; rootless deployment remains a production hardening step. SSH tests use a local protocol fixture, not a real remote host. Slurm is an optional future adapter.
+
 Executors implement submission, cancellation, status, logs, timeout, resource accounting, artifact collection, exit codes, and recovery. Implementations are local process, Docker, SSH, optional Slurm, and deterministic mock.
 
 ## Default local boundary

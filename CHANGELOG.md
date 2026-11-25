@@ -18,3 +18,7 @@ All notable changes are documented here. The project follows Semantic Versioning
 - Revisioned research graph with verifier-gated hypotheses and citation edges.
 - SQLite FTS5 knowledge base, DOI/arXiv deduplication, structured claims, and source locations.
 - Cached arXiv/PDF fetching with rate limits, retries, shared downloads, bounded text extraction, and cited literature review demo.
+- Isolated pinned Docker executor with resource limits, streaming logs, cancellation, and artifact collection.
+- Git worktree isolation, benchmark/custom-command verification, and durable experiment reproducibility records.
+- SSH execution adapter with strict destination/host-key policy and race-tested status polling.
+- Autonomous seeded computational experiment with verifier-gated hypothesis evidence.

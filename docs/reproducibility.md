@@ -1,5 +1,7 @@
 # Scientific Reproducibility
 
+**Implementation status:** Experiment records persist code/configuration hashes, seeds, executor/job details, hardware, dependencies when supplied, commands, logs, metrics, artifacts, and verification outcomes. Verified, failed, and refuted results are retained and exposed at `GET /api/v1/experiments`.
+
 Every experiment record includes, when applicable, experiment and hypothesis IDs, source revision, Git commit, canonical configuration, dataset version and checksum, environment and dependency lock data, random seeds, hardware, executor, commands, metrics, logs, artifact checksums, and verification results.
 
 ## Immutable evidence
