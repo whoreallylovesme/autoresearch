@@ -15,3 +15,6 @@ All notable changes are documented here. The project follows Semantic Versioning
 - Pure-Go SQLite WAL persistence, migrations, transactional events/snapshots, durable messages, and budget recovery.
 - Content-addressed SHA-256 artifact storage with integrity verification.
 - Lease heartbeats, checkpoints, restart recovery, and forced-`SIGKILL` tests against both runtime and the real daemon.
+- Revisioned research graph with verifier-gated hypotheses and citation edges.
+- SQLite FTS5 knowledge base, DOI/arXiv deduplication, structured claims, and source locations.
+- Cached arXiv/PDF fetching with rate limits, retries, shared downloads, bounded text extraction, and cited literature review demo.

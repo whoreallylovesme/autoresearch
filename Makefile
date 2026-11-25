@@ -1,6 +1,6 @@
 GO ?= go
 
-.PHONY: fmt fmt-check lint test test-integration run-demo validate
+.PHONY: fmt fmt-check lint test test-integration run-demo literature-demo validate
 
 fmt:
 	$(GO) fmt ./...
@@ -22,3 +22,6 @@ validate:
 
 run-demo:
 	bash scripts/demo.sh
+
+literature-demo:
+	bash scripts/demo.sh configs/literature.yaml

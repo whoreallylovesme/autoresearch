@@ -1,5 +1,7 @@
 # Research Graph
 
+**Implementation status:** The graph is implemented with typed nodes/edges, immutable revision snapshots, SQLite persistence, and verifier-gated hypothesis transitions. API consumers can read the live graph at `GET /api/v1/graph`.
+
 The research graph is durable scientific state and a primary output, not a visualization derived from chat.
 
 ## Nodes and edges

@@ -11,6 +11,7 @@ The reference target is a Linux VPS with 8 vCPU, 32 GB RAM, NVMe storage, no loc
 - Public repository remote: a dedicated least-privilege deploy key.
 - API: `127.0.0.1:8080` by default; expose only through authenticated TLS infrastructure.
 - Local inference: loopback-only OpenAI-compatible llama.cpp service on a separate port.
+- PDF extraction: `poppler-utils` (`pdftotext`) on the daemon host; subprocesses receive no secret environment.
 
 ## Build and run
 
@@ -21,7 +22,7 @@ researchctl validate --config configs/autoresearch.yaml
 researchd --config configs/autoresearch.yaml --data-dir /srv/autoresearch-private
 ```
 
-Use a dedicated unprivileged service account for production. `deploy/` contains service templates once daemon behavior is implemented; rendered secret-bearing unit files are not committed.
+Use a dedicated unprivileged service account for production. Run `make literature-demo` for the credential-free scientific research acceptance scenario. `deploy/` contains service templates once daemon behavior is implemented; rendered secret-bearing unit files are not committed.
 
 ## Local Hugging Face inference
 

@@ -1,5 +1,7 @@
 # Scientific Knowledge Base
 
+**Implementation status:** SQLite FTS5 paper/claim search, DOI/arXiv deduplication, source attribution, a shared-cache arXiv Atom fetcher, rate-limited PDF download, SHA-256 artifacts, and bounded `pdftotext` extraction are implemented. The deterministic demo uses bundled bibliographic metadata and explicitly avoids claiming full-text review.
+
 The knowledge base stores papers, normalized metadata, full text when legally and technically available, claims, methods, limitations, citations, research notes, experiment results, negative results, and code artifacts.
 
 ## Paper Fetcher

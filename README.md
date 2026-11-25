@@ -2,7 +2,7 @@
 
 AutoResearch is an open-source runtime for long-running, multi-agent scientific research. A configurable Chief Scientist coordinates replaceable research, development, brainstorming, and criticism agents while deterministic Go infrastructure enforces budgets, scheduling, isolation, verification, and auditability.
 
-**Current status:** Milestones 1 (minimal autonomous runtime) and 2 (persistence and crash recovery) are implemented and verified. Later milestones remain active or planned. The [progress log](docs/progress.md) is the source of truth; planned features are not presented as available.
+**Current status:** Milestones 1–3 (autonomous runtime, crash-safe persistence, and scientific knowledge/research graph) are implemented and verified. Later milestones remain active or planned. The [progress log](docs/progress.md) is the source of truth; planned features are not presented as available.
 
 ## Design principles
 
@@ -37,6 +37,7 @@ make validate
 make test
 make test-integration
 make run-demo
+make literature-demo
 ```
 
 The demo builds `researchd` and `researchctl`, starts a loopback API, and completes an autonomous Chief Scientist run with two research workers and independent criticism. To operate a daemon manually:
@@ -55,7 +56,7 @@ go build -o bin/researchctl ./cmd/researchctl
 ./bin/researchctl report
 ```
 
-Research state now uses SQLite WAL, transactional events/snapshots, durable messages, budget snapshots, and checksummed filesystem artifacts. Forced-termination recovery is tested against the real daemon. Scientific literature, sandboxed experiments, and the web control center belong to later milestones. `pause`, `resume`, `finalize`, and `chat` are reserved CLI commands but are not yet implemented. See [deployment](docs/deployment.md), [configuration](docs/configuration.md), and the [roadmap](docs/roadmap.md).
+Research state uses SQLite WAL, transactional events/snapshots, durable messages, budget snapshots, and checksummed artifacts. Forced-termination recovery is tested against the real daemon. The scientific layer includes a revisioned research graph, verifier-gated hypotheses, FTS5 paper/claim search, a deduplicating arXiv/PDF fetcher, and a cited literature-review demo. Sandboxed experiments and the web control center belong to later milestones. `pause`, `resume`, `finalize`, and `chat` are reserved CLI commands but are not yet implemented. See [deployment](docs/deployment.md), [configuration](docs/configuration.md), and the [roadmap](docs/roadmap.md).
 
 ## Documentation
 

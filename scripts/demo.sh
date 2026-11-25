@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+config_path=${1:-configs/autoresearch.yaml}
 mkdir -p bin
 go build -o bin/researchd ./cmd/researchd
 go build -o bin/researchctl ./cmd/researchctl
@@ -12,7 +13,7 @@ with socket.socket() as sock:
     print(f"127.0.0.1:{sock.getsockname()[1]}")
 PY
 )
-./bin/researchd --config configs/autoresearch.yaml --listen "$address" --data-dir "$data_dir" &
+./bin/researchd --config "$config_path" --listen "$address" --data-dir "$data_dir" &
 daemon_pid=$!
 cleanup() {
   kill "$daemon_pid" 2>/dev/null || true
@@ -26,4 +27,4 @@ for _ in $(seq 1 100); do
   fi
   sleep 0.05
 done
-./bin/researchctl run --config configs/autoresearch.yaml --api "http://$address" --timeout 30s
+./bin/researchctl run --config "$config_path" --api "http://$address" --timeout 30s
