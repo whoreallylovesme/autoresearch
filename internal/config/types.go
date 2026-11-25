@@ -128,6 +128,9 @@ type VerificationConfig struct {
 	Command           []string `yaml:"command"`
 	Timeout           Duration `yaml:"timeout"`
 	RequiredArtifacts []string `yaml:"required_artifacts"`
+	Metric            string   `yaml:"metric"`
+	Threshold         float64  `yaml:"threshold"`
+	Direction         string   `yaml:"direction"`
 }
 
 type BudgetConfig struct {
@@ -181,8 +184,11 @@ type ExecutorDefinition struct {
 	WorkspaceRoot string `yaml:"workspace_root"`
 	Timeout       Duration
 	Network       string
-	MaxMemoryMB   int     `yaml:"max_memory_mb"`
-	MaxCPUs       float64 `yaml:"max_cpus"`
+	MaxMemoryMB   int      `yaml:"max_memory_mb"`
+	MaxCPUs       float64  `yaml:"max_cpus"`
+	PIDs          int      `yaml:"pids"`
+	Image         string   `yaml:"image"`
+	AllowedImages []string `yaml:"allowed_images"`
 }
 
 type RuntimeConfig struct {

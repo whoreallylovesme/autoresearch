@@ -252,8 +252,20 @@ func (l *loader) loadTask(path string) (TaskConfig, error) {
 	if len(task.Deliverables) == 0 {
 		return TaskConfig{}, errors.New("at least one deliverable is required")
 	}
-	if verification.Type != "custom-command" || len(verification.Command) == 0 || verification.Timeout.Duration <= 0 {
-		return TaskConfig{}, errors.New("custom-command verification requires a command and positive timeout")
+	if verification.Timeout.Duration <= 0 {
+		return TaskConfig{}, errors.New("verification requires a positive timeout")
+	}
+	switch verification.Type {
+	case "custom-command":
+		if len(verification.Command) == 0 {
+			return TaskConfig{}, errors.New("custom-command verification requires a command")
+		}
+	case "benchmark":
+		if verification.Metric == "" || (verification.Direction != "min" && verification.Direction != "max") {
+			return TaskConfig{}, errors.New("benchmark verification requires metric and min/max direction")
+		}
+	default:
+		return TaskConfig{}, errors.New("unsupported verification type")
 	}
 	return task, nil
 }
