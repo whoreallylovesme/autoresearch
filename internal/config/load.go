@@ -56,6 +56,7 @@ type modelFile struct {
 	Model        string           `yaml:"model"`
 	APIKeyEnv    string           `yaml:"api_key_env"`
 	BaseURL      string           `yaml:"base_url"`
+	BaseURLEnv   string           `yaml:"base_url_env"`
 	Parameters   map[string]any   `yaml:"parameters"`
 	Capabilities Capabilities     `yaml:"capabilities"`
 	Retry        RetryConfig      `yaml:"retry"`
@@ -209,7 +210,7 @@ func (l *loader) loadModel(path string) (ModelConfig, error) {
 	if err := l.decode(path, &raw); err != nil {
 		return ModelConfig{}, err
 	}
-	model := ModelConfig{Version: raw.Version, Provider: raw.Provider, Model: raw.Model, APIKeyEnv: raw.APIKeyEnv, BaseURL: raw.BaseURL, Parameters: raw.Parameters, Capabilities: raw.Capabilities, Retry: raw.Retry, Timeout: raw.Timeout, RateLimit: raw.RateLimit, Pricing: raw.Pricing, Estimation: raw.Estimation, SourcePath: path}
+	model := ModelConfig{Version: raw.Version, Provider: raw.Provider, Model: raw.Model, APIKeyEnv: raw.APIKeyEnv, BaseURL: raw.BaseURL, BaseURLEnv: raw.BaseURLEnv, Parameters: raw.Parameters, Capabilities: raw.Capabilities, Retry: raw.Retry, Timeout: raw.Timeout, RateLimit: raw.RateLimit, Pricing: raw.Pricing, Estimation: raw.Estimation, SourcePath: path}
 	if err := validateModel(&model); err != nil {
 		return ModelConfig{}, fmt.Errorf("%s: %w", path, err)
 	}
@@ -456,6 +457,11 @@ func validateModel(model *ModelConfig) error {
 	default:
 		return fmt.Errorf("unsupported provider %q", model.Provider)
 	}
+	if model.BaseURLEnv != "" {
+		if value := os.Getenv(model.BaseURLEnv); value != "" {
+			model.BaseURL = value
+		}
+	}
 	if model.Provider != "mock" {
 		parsed, err := url.Parse(model.BaseURL)
 		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
@@ -490,6 +496,14 @@ func validateModel(model *ModelConfig) error {
 			level, ok := value.(string)
 			if !ok || !slices.Contains(model.Capabilities.ReasoningEfforts, level) {
 				return fmt.Errorf("reasoning_effort %q is not declared in capabilities.reasoning_efforts", value)
+			}
+		case "response_format":
+			format, ok := value.(string)
+			if !ok || (format != "text" && format != "json_object") {
+				return errors.New("response_format must be text or json_object")
+			}
+			if format == "json_object" && !model.Capabilities.StructuredOutputs {
+				return errors.New("response_format json_object requires structured_outputs capability")
 			}
 		}
 	}

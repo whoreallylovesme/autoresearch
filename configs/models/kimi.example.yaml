@@ -1,10 +1,18 @@
 version: 1
 provider: kimi
-model: replace-with-a-currently-supported-model
+model: kimi-k3.1-pro
 api_key_env: MOONSHOT_API_KEY
 base_url: https://api.moonshot.ai/v1
 parameters:
   max_output_tokens: 4096
+  reasoning_effort: high
+  response_format: text
+capabilities:
+  streaming: true
+  tools: true
+  structured_outputs: true
+  supported_parameters: [max_output_tokens, reasoning_effort, response_format]
+  reasoning_efforts: [low, high, max]
 retry:
   max_attempts: 3
   backoff: exponential
@@ -13,3 +21,11 @@ retry:
 timeout: 15m
 rate_limit:
   requests_per_minute: 60
+# Required before a live run: configure current per-million-token prices.
+# pricing:
+#   input_usd_per_million: SET_BY_OPERATOR
+#   output_usd_per_million: SET_BY_OPERATOR
+#   cached_usd_per_million: SET_BY_OPERATOR
+#   reasoning_usd_per_million: SET_BY_OPERATOR
+estimation:
+  max_input_tokens: 32768

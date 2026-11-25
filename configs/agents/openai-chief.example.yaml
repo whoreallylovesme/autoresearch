@@ -1,0 +1,14 @@
+version: 1
+role: chief-scientist
+model: ../models/astra.example.yaml
+prompt:
+  type: custom
+  path: ../../prompts/chief-scientist.md
+tools: [create_task, delegate_task, list_agents, get_agent_status, send_message, cancel_task, reprioritize_task, inspect_artifact, query_knowledge, register_hypothesis, request_experiment, request_verification, get_budget_status, finalize_research]
+context:
+  strategy: hierarchical-summary
+  persistent_memory: true
+permissions:
+  network: restricted
+  filesystem: workspace-only
+  shell: false

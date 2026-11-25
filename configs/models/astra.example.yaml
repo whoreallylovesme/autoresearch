@@ -1,0 +1,28 @@
+version: 1
+provider: openai
+model: replace-with-a-currently-supported-astra-model
+api_key_env: OPENAI_API_KEY
+base_url: https://api.openai.com/v1
+parameters:
+  max_output_tokens: 4096
+capabilities:
+  streaming: true
+  tools: true
+  structured_outputs: true
+  supported_parameters: [max_output_tokens]
+retry:
+  max_attempts: 3
+  backoff: exponential
+  initial_interval: 500ms
+  max_interval: 30s
+timeout: 30m
+rate_limit:
+  requests_per_minute: 60
+# Configure current provider prices before any live run.
+# pricing:
+#   input_usd_per_million: SET_BY_OPERATOR
+#   output_usd_per_million: SET_BY_OPERATOR
+#   cached_usd_per_million: SET_BY_OPERATOR
+#   reasoning_usd_per_million: SET_BY_OPERATOR
+estimation:
+  max_input_tokens: 32768

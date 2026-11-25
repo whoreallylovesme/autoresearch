@@ -71,6 +71,7 @@ type ModelConfig struct {
 	Model        string
 	APIKeyEnv    string `yaml:"api_key_env"`
 	BaseURL      string `yaml:"base_url"`
+	BaseURLEnv   string `yaml:"base_url_env"`
 	Parameters   map[string]any
 	Capabilities Capabilities
 	Retry        RetryConfig

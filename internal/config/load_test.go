@@ -191,3 +191,17 @@ func assertErrorContains(t *testing.T, err error, substring string) {
 		t.Fatalf("error = %v, want substring %q", err, substring)
 	}
 }
+
+func TestLoadResolvesModelBaseURLEnv(t *testing.T) {
+	root := copyConfigs(t)
+	path := filepath.Join(root, "models", "mock.yaml")
+	appendFile(t, path, "base_url_env: TEST_MODEL_BASE_URL\n")
+	t.Setenv("TEST_MODEL_BASE_URL", "http://llama:8080/v1")
+	configuration, err := config.Load(filepath.Join(root, "autoresearch.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if configuration.Chief.Model.BaseURL != "http://llama:8080/v1" {
+		t.Fatalf("BaseURL = %q", configuration.Chief.Model.BaseURL)
+	}
+}

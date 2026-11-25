@@ -2,6 +2,7 @@ version: 1
 provider: hf-mock
 model: qwen2.5-0.5b-instruct
 base_url: http://127.0.0.1:8082/v1
+base_url_env: AUTORESEARCH_MODEL_BASE_URL
 parameters:
   temperature: 0
   max_output_tokens: 256

@@ -27,7 +27,7 @@ func DefaultFactory() ProviderFactory {
 				return nil, fmt.Errorf("required provider credential %s is not set", model.APIKeyEnv)
 			}
 		}
-		capabilities := provider.Capabilities{Streaming: model.Capabilities.Streaming, Tools: model.Capabilities.Tools, StructuredOutputs: model.Capabilities.StructuredOutputs, SupportedParameters: append([]string(nil), model.Capabilities.SupportedParameters...)}
+		capabilities := provider.Capabilities{Streaming: model.Capabilities.Streaming, Tools: model.Capabilities.Tools, StructuredOutputs: model.Capabilities.StructuredOutputs, SupportedParameters: append([]string(nil), model.Capabilities.SupportedParameters...), ReasoningEfforts: append([]string(nil), model.Capabilities.ReasoningEfforts...)}
 		if len(capabilities.SupportedParameters) == 0 {
 			capabilities.SupportedParameters = []string{"max_output_tokens"}
 			if model.Provider == "openai-compatible" || model.Provider == "hf-mock" {
@@ -46,18 +46,25 @@ func DefaultFactory() ProviderFactory {
 		if model.Provider == "hf-mock" {
 			providerName = "openai-compatible"
 		}
-		client, err := provider.NewOpenAI(provider.OpenAIOptions{
+		options := provider.OpenAIOptions{
 			Provider: providerName, Model: model.Model, BaseURL: model.BaseURL, APIKey: apiKey,
 			HTTPClient: &http.Client{Timeout: model.Timeout.Duration}, Capabilities: capabilities,
 			Retry:             provider.RetryPolicy{MaxAttempts: model.Retry.MaxAttempts, InitialBackoff: model.Retry.InitialInterval.Duration, MaxBackoff: model.Retry.MaxInterval.Duration},
 			RequestsPerMinute: model.RateLimit.RequestsPerMinute, Limiter: limiter,
-		})
+		}
+		var modelProvider provider.Provider
+		var err error
+		if model.Provider == "kimi" {
+			modelProvider, err = provider.NewKimi(options)
+		} else {
+			modelProvider, err = provider.NewOpenAI(options)
+		}
 		if err != nil {
 			return nil, errors.Join(errors.New("create model provider"), err)
 		}
 		if model.Provider == "hf-mock" {
-			return NewHFMockProvider(client, agentID, configuration), nil
+			return NewHFMockProvider(modelProvider, agentID, configuration), nil
 		}
-		return client, nil
+		return modelProvider, nil
 	}
 }
