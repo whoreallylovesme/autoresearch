@@ -31,7 +31,7 @@ The canonical CI workflow runs `go vet`, `go test -race -shuffle=on ./...`, inte
 
 ## Integration recovery test
 
-A subprocess starts a real run with a controllable provider, commits one result, blocks on a second task, and is terminated with `SIGKILL`. A new process opens the same database, fences the old lease, resumes pending work, and verifies no completed result or accepted message is lost or duplicated.
+Two process-level tests exercise recovery. The runtime helper commits one result, blocks on a second task, receives `SIGKILL`, and resumes in a new process. The daemon acceptance test starts the actual `researchd` with `AUTORESEARCH_DEMO_DELAY=2s` for deterministic fault timing, kills it with `SIGKILL`, restarts it on the same private data directory, and verifies three unique completed tasks/findings/messages, an artifact, ordered events, and no open budget reservations.
 
 ## Demonstration
 

@@ -2,7 +2,7 @@
 
 AutoResearch is an open-source runtime for long-running, multi-agent scientific research. A configurable Chief Scientist coordinates replaceable research, development, brainstorming, and criticism agents while deterministic Go infrastructure enforces budgets, scheduling, isolation, verification, and auditability.
 
-**Current status:** Milestone 1 (minimal autonomous runtime) is implemented and verified. Later milestones remain active or planned. The [progress log](docs/progress.md) is the source of truth; planned features are not presented as available.
+**Current status:** Milestones 1 (minimal autonomous runtime) and 2 (persistence and crash recovery) are implemented and verified. Later milestones remain active or planned. The [progress log](docs/progress.md) is the source of truth; planned features are not presented as available.
 
 ## Design principles
 
@@ -55,7 +55,7 @@ go build -o bin/researchctl ./cmd/researchctl
 ./bin/researchctl report
 ```
 
-Milestone 1 uses in-memory research state. Restart recovery, scientific literature, sandboxed experiments, and the web control center belong to later milestones. `pause`, `resume`, `finalize`, and `chat` are reserved CLI commands but are not yet implemented. See [deployment](docs/deployment.md), [configuration](docs/configuration.md), and the [roadmap](docs/roadmap.md).
+Research state now uses SQLite WAL, transactional events/snapshots, durable messages, budget snapshots, and checksummed filesystem artifacts. Forced-termination recovery is tested against the real daemon. Scientific literature, sandboxed experiments, and the web control center belong to later milestones. `pause`, `resume`, `finalize`, and `chat` are reserved CLI commands but are not yet implemented. See [deployment](docs/deployment.md), [configuration](docs/configuration.md), and the [roadmap](docs/roadmap.md).
 
 ## Documentation
 

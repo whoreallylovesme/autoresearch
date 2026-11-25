@@ -18,7 +18,7 @@ The reference target is a Linux VPS with 8 vCPU, 32 GB RAM, NVMe storage, no loc
 go build -o bin/researchd ./cmd/researchd
 go build -o bin/researchctl ./cmd/researchctl
 researchctl validate --config configs/autoresearch.yaml
-researchd --config configs/autoresearch.yaml
+researchd --config configs/autoresearch.yaml --data-dir /srv/autoresearch-private
 ```
 
 Use a dedicated unprivileged service account for production. `deploy/` contains service templates once daemon behavior is implemented; rendered secret-bearing unit files are not committed.

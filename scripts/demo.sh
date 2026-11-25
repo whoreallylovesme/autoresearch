@@ -4,6 +4,7 @@ cd "$(dirname "$0")/.."
 mkdir -p bin
 go build -o bin/researchd ./cmd/researchd
 go build -o bin/researchctl ./cmd/researchctl
+data_dir=$(mktemp -d)
 address=$(python3 - <<'PY'
 import socket
 with socket.socket() as sock:
@@ -11,11 +12,12 @@ with socket.socket() as sock:
     print(f"127.0.0.1:{sock.getsockname()[1]}")
 PY
 )
-./bin/researchd --config configs/autoresearch.yaml --listen "$address" &
+./bin/researchd --config configs/autoresearch.yaml --listen "$address" --data-dir "$data_dir" &
 daemon_pid=$!
 cleanup() {
   kill "$daemon_pid" 2>/dev/null || true
   wait "$daemon_pid" 2>/dev/null || true
+  rm -rf "$data_dir"
 }
 trap cleanup EXIT INT TERM
 for _ in $(seq 1 100); do

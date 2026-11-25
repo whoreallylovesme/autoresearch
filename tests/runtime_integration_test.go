@@ -28,7 +28,7 @@ func TestDaemonAndCLICompleteCredentialFreeResearch(t *testing.T) {
 	address := freeAddress(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	command := exec.CommandContext(ctx, daemon, "--config", filepath.Join(root, "configs", "autoresearch.yaml"), "--listen", address)
+	command := exec.CommandContext(ctx, daemon, "--config", filepath.Join(root, "configs", "autoresearch.yaml"), "--listen", address, "--data-dir", filepath.Join(binDir, "private-data"))
 	command.Dir = root
 	var daemonLogs strings.Builder
 	command.Stdout = &daemonLogs
@@ -94,17 +94,20 @@ func freeAddress(t *testing.T) string {
 func waitForDaemon(t *testing.T, baseURL string) {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
+	var lastStatus map[string]any
+	var lastErr error
 	for time.Now().Before(deadline) {
 		response, err := http.Get(baseURL + "/api/v1/run/status")
+		lastErr = err
 		if err == nil {
-			var status map[string]any
-			err = json.NewDecoder(response.Body).Decode(&status)
+			err = json.NewDecoder(response.Body).Decode(&lastStatus)
 			response.Body.Close()
-			if err == nil && status["state"] == "created" {
+			lastErr = err
+			if err == nil && lastStatus["state"] != "" {
 				return
 			}
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	t.Fatal(fmt.Sprintf("daemon at %s did not become ready", baseURL))
+	t.Fatal(fmt.Sprintf("daemon at %s did not become ready: last status = %#v, error = %v", baseURL, lastStatus, lastErr))
 }

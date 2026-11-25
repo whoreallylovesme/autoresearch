@@ -28,12 +28,16 @@ func run() error {
 	flags := flag.NewFlagSet("researchd", flag.ContinueOnError)
 	configPath := flags.String("config", "configs/autoresearch.yaml", "main configuration path")
 	listen := flags.String("listen", "", "override loopback listen address")
+	dataDir := flags.String("data-dir", "", "override private runtime data directory")
 	if err := flags.Parse(os.Args[1:]); err != nil {
 		return err
 	}
 	configuration, err := config.Load(*configPath)
 	if err != nil {
 		return err
+	}
+	if *dataDir != "" {
+		configuration.Runtime.DataDir = *dataDir
 	}
 	address := configuration.Runtime.Listen
 	if *listen != "" {
@@ -43,10 +47,11 @@ func run() error {
 	if err != nil || (host != "localhost" && (net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback())) {
 		return errors.New("listen address must be loopback")
 	}
-	runtime, err := research.New(configuration, research.DefaultFactory())
+	runtime, err := research.NewPersistent(configuration, research.DefaultFactory())
 	if err != nil {
 		return err
 	}
+	defer runtime.Close()
 	apiServer := api.New(runtime)
 	httpServer := &http.Server{Addr: address, Handler: apiServer, ReadHeaderTimeout: 5 * time.Second}
 	listener, err := net.Listen("tcp", address)

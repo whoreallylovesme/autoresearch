@@ -1,5 +1,7 @@
 # Event Store and Persistence
 
+**Implementation status:** Milestone 2 implements the SQLite WAL schema, ordered migrations, transactional task/finding/message/event completion, run and budget snapshots, content-addressed artifact metadata, checkpoints, and restart recovery. Runtime events carry stable IDs, run IDs, per-run sequences, schema versions, timestamps, actors, and JSON payloads.
+
 ## Contract
 
 Every event contains a stable UUID, run ID, monotonically increasing per-run sequence, UTC timestamp, event type, schema version, actor, optional correlation and causation IDs, and structured JSON payload. The per-run sequence is the UI and replay ordering key; wall time is not unique.
