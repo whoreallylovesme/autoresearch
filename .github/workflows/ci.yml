@@ -66,3 +66,26 @@ jobs:
             echo 'Potential credential file is tracked' >&2
             exit 1
           fi
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install Python dependencies
+        run: pip install -r web/requirements.txt -r web/requirements-dev.txt
+      - name: Install browser dependencies
+        run: npm ci --prefix web
+      - name: Browser acceptance
+        run: make browser-test

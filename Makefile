@@ -1,6 +1,6 @@
 GO ?= go
 
-.PHONY: fmt fmt-check lint test test-integration run-demo literature-demo experiment-demo validate
+.PHONY: fmt fmt-check lint test test-integration run-demo literature-demo experiment-demo control-center browser-test web-lint web-test validate
 
 fmt:
 	$(GO) fmt ./...
@@ -28,3 +28,15 @@ literature-demo:
 
 experiment-demo:
 	bash scripts/demo.sh configs/experiment.yaml
+
+web-lint:
+	cd web && ../.venv/bin/ruff check . && ../.venv/bin/ruff format --check .
+
+web-test:
+	cd web && ../.venv/bin/pytest -q
+
+control-center:
+	bash scripts/control-center.sh
+
+browser-test:
+	bash scripts/browser-smoke.sh

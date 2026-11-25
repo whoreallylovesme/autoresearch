@@ -22,7 +22,7 @@ researchctl validate --config configs/autoresearch.yaml
 researchd --config configs/autoresearch.yaml --data-dir /srv/autoresearch-private
 ```
 
-Use a dedicated unprivileged service account for production. Run `make literature-demo` for the credential-free scientific research acceptance scenario. `deploy/` contains service templates once daemon behavior is implemented; rendered secret-bearing unit files are not committed.
+Use a dedicated unprivileged service account for production. Run `make literature-demo` and `make experiment-demo` for the scientific acceptance scenarios. Run `make control-center` to build and start both `researchd` on `127.0.0.1:8080` and NiceGUI on `127.0.0.1:8081`, then execute the configured research run. `make browser-test` performs the Chromium acceptance suite. `deploy/` contains service templates once daemon behavior is implemented; rendered secret-bearing unit files are not committed.
 
 ## Local Hugging Face inference
 

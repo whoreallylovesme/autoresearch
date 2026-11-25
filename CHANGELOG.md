@@ -22,3 +22,6 @@ All notable changes are documented here. The project follows Semantic Versioning
 - Git worktree isolation, benchmark/custom-command verification, and durable experiment reproducibility records.
 - SSH execution adapter with strict destination/host-key policy and race-tested status polling.
 - Autonomous seeded computational experiment with verifier-gated hypothesis evidence.
+- NiceGUI research control center with live dashboards, agent details, interactive graph, Plotly, experiments, and reports.
+- Resumable live SSE, persistent Chief Scientist chat, and start/pause/resume/finalize/stop controls.
+- Python unit tests and repeatable headless Chromium browser acceptance.

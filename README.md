@@ -2,7 +2,7 @@
 
 AutoResearch is an open-source runtime for long-running, multi-agent scientific research. A configurable Chief Scientist coordinates replaceable research, development, brainstorming, and criticism agents while deterministic Go infrastructure enforces budgets, scheduling, isolation, verification, and auditability.
 
-**Current status:** Milestones 1–4 (autonomous runtime, persistence, scientific knowledge, and verified experimental execution) are implemented and verified. Later milestones remain active or planned. The [progress log](docs/progress.md) is the source of truth; planned features are not presented as available.
+**Current status:** Milestones 1–5 (autonomous runtime, persistence, scientific research, verified execution, and the Python control center) are implemented and verified. Milestone 6 is active. The [progress log](docs/progress.md) is the source of truth; planned features are not presented as available.
 
 ## Design principles
 
@@ -30,7 +30,7 @@ The backend is Go. The control center is Python. SQLite WAL, filesystem artifact
 
 ## Quick start
 
-Requires Go 1.24 and Python 3 for the demo process wrapper. No API credentials or GPU are needed.
+Requires Go 1.24 and Python 3.12+ for the demo process wrapper and control center. No API credentials or GPU are needed.
 
 ```bash
 make validate
@@ -55,9 +55,12 @@ go build -o bin/researchctl ./cmd/researchctl
 ./bin/researchctl budget
 ./bin/researchctl logs --follow
 ./bin/researchctl report
+./bin/researchctl chat --message "Summarize current status"
+./bin/researchctl pause
+./bin/researchctl resume
 ```
 
-Research state uses SQLite WAL, transactional events/snapshots, durable messages, budget snapshots, and checksummed artifacts. Forced-termination recovery is tested against the real daemon. The scientific layer includes a revisioned research graph, verifier-gated hypotheses, FTS5 paper/claim search, a deduplicating arXiv/PDF fetcher, and a cited literature-review demo. Experimental execution includes pinned Docker isolation, Git worktrees, benchmark/custom-command verification, reproducibility records, and an SSH adapter. The web control center belongs to the next milestone. `pause`, `resume`, `finalize`, and `chat` are reserved CLI commands but are not yet implemented. See [deployment](docs/deployment.md), [configuration](docs/configuration.md), and the [roadmap](docs/roadmap.md).
+Research state uses SQLite WAL, transactional events/snapshots, durable messages, budget snapshots, and checksummed artifacts. Forced-termination recovery is tested against the real daemon. The scientific layer includes a revisioned research graph, verifier-gated hypotheses, FTS5 paper/claim search, a deduplicating arXiv/PDF fetcher, and a cited literature-review demo. Experimental execution includes pinned Docker isolation, Git worktrees, benchmark/custom-command verification, reproducibility records, and an SSH adapter. The NiceGUI control center provides live dashboards, fleet details, an interactive research graph, budget charts, experiments, events, reports, persistent Chief Scientist chat, and operator controls. Research playback and additional long-horizon hardening belong to Milestone 6. See [deployment](docs/deployment.md), [configuration](docs/configuration.md), and the [roadmap](docs/roadmap.md).
 
 ## Documentation
 

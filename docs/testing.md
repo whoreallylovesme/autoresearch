@@ -11,6 +11,11 @@ make test
 make test-integration
 make validate
 make run-demo
+make literature-demo
+make experiment-demo
+make web-lint
+make web-test
+make browser-test
 ```
 
 The canonical CI workflow runs `go vet`, `go test -race -shuffle=on ./...`, integration tests, Python Ruff checks, and pytest when those components exist.
@@ -28,6 +33,7 @@ The canonical CI workflow runs `go vet`, `go test -race -shuffle=on ./...`, inte
 - Sandbox filesystem/network/secrets restrictions, timeouts, and resource limits.
 - Artifact checksums and immutable result history.
 - API contracts and Python control-center behavior.
+- Headless Chromium acceptance for live events, graph, Plotly, experiments, fleet links, and persistent chat.
 
 ## Integration recovery test
 

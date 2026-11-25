@@ -4,51 +4,54 @@ Last updated: 2026-11-25
 
 ## Current status
 
-Milestones 0–4 are complete. Milestone 5 (web control center) is next.
+Milestones 0–5 are complete. Milestone 6 (full autonomous research and hardening) is active.
 
 ## Implemented and verified
 
-### Runtime, persistence, and science
+### Runtime and scientific infrastructure
 
-- Strict configuration, native agents, replaceable providers, concurrent budgets, scheduler leases, and structured messages.
-- SQLite WAL, transactional events/snapshots, durable budgets/messages, artifact integrity, checkpoints, and forced-`SIGKILL` recovery against the real daemon.
-- Revisioned research graph, verifier-gated hypotheses, FTS5 knowledge, structured claims, cached arXiv/PDF fetching, and cited literature review.
+- Strict YAML, native agents, provider abstraction, concurrent budgets, scheduler leases, persistent messages/events, and crash recovery.
+- Research graph, verifier-gated hypotheses, FTS5 knowledge, cached arXiv/PDF processing, and cited literature review.
+- Restricted Docker and SSH execution, Git worktrees, benchmark/custom-command verification, reproducibility records, and an autonomous verified computational experiment.
 
-### Experimental execution
+### Python control center
 
-- Docker executor with pinned image allowlists, no network, read-only root, dropped capabilities, no-new-privileges, numeric non-root user, CPU/memory/PID/time limits, and isolated workspace mounts.
-- Asynchronous jobs, cancellation, status, streaming logs, exit codes, and bounded artifact collection with symlink/path-traversal protection.
-- Git worktree manager that preserves uncommitted work instead of force-deleting it.
-- Benchmark and custom-command verifiers, including explicit metric directions and exit-code evidence.
-- Experiment records with code/configuration hashes, seeds, hardware, dependencies, commands, logs, metrics, artifacts, and verification outcomes; failed and refuted results persist.
-- Autonomous experiment demo that registers a hypothesis, writes and executes seeded Python, verifies `answer=6`, revises the graph, obtains criticism, and persists the verified result after reopen.
-- SSH adapter with destination allowlists, BatchMode, strict host-key checking, operator-owned identity files, remote PID/exit records, logs, cancellation, artifact collection, and race-tested concurrent status polling.
-- `GET /api/v1/experiments` and `make experiment-demo` acceptance command.
+- NiceGUI overview with objective, lifecycle, agents, tasks, experiments, papers, hypotheses, and budget metrics.
+- Agent fleet and individual agent detail pages with models, providers, states, heartbeats, usage, tasks, and event history.
+- Cytoscape.js graph with pan/zoom, clickable nodes, status/author/timeline filters, live refresh, and an accessible semantic node table.
+- Plotly provider accounting and agent/model token tables; unavailable time series is explicitly marked unavailable.
+- Experiment dashboard with status, executor, metrics, verification, logs, and artifacts.
+- Resumable live event stream with actor/type filters, reconnection, visibility-aware resource saving, and live-state indicator.
+- Report view, persistent Chief Scientist chat, authoritative directive envelopes, and start/pause/resume/finalize/emergency-stop controls.
+- Same-origin runtime proxy, loopback-only defaults, pinned local Cytoscape assets, responsive tables, keyboard-scrollable regions, focus indicators, and touch-sized controls.
 
 ## Verification evidence
 
-Required checks are `make fmt-check`, `make lint`, `make test`, `make test-integration`, `make validate`, `make run-demo`, `make literature-demo`, and `make experiment-demo`. Docker tests execute real containers on the VPS. SSH tests use a local fake transport and do not contact private infrastructure. All Go tests use race detection; no paid API or GPU is used.
+- Go: `make fmt-check`, `make lint`, `make test`, `make test-integration`, `make validate`.
+- Acceptance demos: `make run-demo`, `make literature-demo`, `make experiment-demo`.
+- Python: `make web-lint`, `make web-test`.
+- Browser: `make browser-test` starts fresh `researchd` and NiceGUI processes, runs the experiment, and verifies live events, Cytoscape graph, Plotly, experiments, fleet links, and persistent chat in Chromium.
+- Forced daemon recovery, real Docker execution, and race detection are exercised on the VPS. No paid API or GPU is used.
 
 ## Known limitations
 
-- Development uses root-managed Docker with restricted containers. Rootless Docker and production AppArmor/seccomp profiles remain hardening work.
-- SSH is covered by local protocol fixtures, not a real remote-server integration test. Remote cancellation is best-effort. Slurm is not implemented.
-- Interrupted Docker/SSH experiments are marked failed on restart rather than transparently resumed; tasks remain at-least-once and require idempotent retry.
-- NiceGUI dashboards, persistent operator chat, and playback are not implemented.
-- `pause`, `resume`, `finalize`, and `chat` CLI commands remain reserved but unavailable.
-- Real model providers have local contract tests only; no paid live call has been attempted.
+- Research playback and advanced long-horizon context compaction are not implemented.
+- The local Hugging Face/llama.cpp inference smoke test is not yet deployed.
+- Development uses root-managed Docker; rootless deployment remains hardening work. SSH uses local fixtures, and Slurm is not implemented.
+- Real providers have local contract tests only; no paid live call has been attempted.
+- The UI is loopback-only by design. Remote exposure requires authenticated TLS infrastructure.
 
 ## Blockers
 
-None for Milestone 5. The runtime exposes versioned REST/SSE contracts for the Python application.
+None for Milestone 6. A small Qwen GGUF model and llama.cpp can run on the VPS CPU without paid credentials.
 
 ## Next implementation steps
 
-1. Build the NiceGUI control center with overview, agents, budgets, events, experiments, graph, and report views.
-2. Add operator stop control and persistent Chief Scientist chat/directives through the same API.
-3. Add Cytoscape.js interactive graph and Plotly budget charts with resumable live updates.
-4. Add Python tests, deployment configuration, and browser acceptance checks.
+1. Deploy pinned llama.cpp and Qwen2.5 0.5B GGUF, then verify the OpenAI-compatible local provider end to end.
+2. Add research playback from stored event sequences.
+3. Harden hierarchical context summaries, provider quotas, long-horizon finalization, and deployment templates.
+4. Complete full-stack verification, CI, and public release documentation.
 
 ## Next handoff
 
-Use the remote VPS for all builds, tests, model serving, and application execution. Integrated source is `/opt/autoresearch`; milestone worktrees are siblings. Keep private runtime state outside Git and do not expose loopback APIs publicly without authentication.
+Use `/opt/autoresearch` on the remote VPS and sibling milestone worktrees. Run all builds, model inference, and browser tests on that host. Keep secrets and private research data outside Git and read this file plus the roadmap before continuing.

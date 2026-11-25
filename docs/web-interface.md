@@ -1,5 +1,7 @@
 # Web Interface
 
+**Implementation status:** The NiceGUI control center is implemented with overview/fleet/agent-detail, Cytoscape.js graph with accessible node table, Plotly budget, experiments, resumable live SSE events, report view, persistent Chief chat, and start/pause/resume/finalize/emergency-stop controls. A same-origin proxy avoids direct browser-to-daemon access. Browser acceptance runs in headless Chromium on the VPS and CI.
+
 The Python control center is a first-class operator interface using the same versioned API as `researchctl`. NiceGUI is the primary application framework, Plotly provides analytical charts, and Cytoscape.js provides the interactive graph. No custom TypeScript application is planned.
 
 ## Design direction

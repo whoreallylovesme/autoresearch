@@ -1,0 +1,11 @@
+{
+  "name": "autoresearch-control-center",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test:browser": "node tests/browser_smoke.js"
+  },
+  "devDependencies": {
+    "playwright": "1.65.1"
+  }
+}
