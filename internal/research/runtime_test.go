@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/whoreallylovesme/autoresearch/internal/config"
+	"github.com/whoreallylovesme/autoresearch/internal/messaging"
 	"github.com/whoreallylovesme/autoresearch/internal/provider"
 	"github.com/whoreallylovesme/autoresearch/internal/research"
 	"github.com/whoreallylovesme/autoresearch/internal/scheduler"
@@ -108,4 +109,64 @@ func loadConfig(t *testing.T) *config.Config {
 		t.Fatal(err)
 	}
 	return cfg
+}
+
+func TestPauseAndResumeResearch(t *testing.T) {
+	t.Setenv("AUTORESEARCH_DEMO_DELAY", "30ms")
+	cfg := loadConfig(t)
+	runtime, err := research.New(cfg, research.DemoFactory())
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- runtime.Run(context.Background()) }()
+	waitForRuntimeState(t, runtime, research.StateRunning)
+	if err := runtime.Pause(); err != nil {
+		t.Fatal(err)
+	}
+	if runtime.Status().State != research.StatePaused {
+		t.Fatalf("state = %s", runtime.Status().State)
+	}
+	if err := runtime.Resume(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("resumed run did not complete")
+	}
+}
+
+func TestPersistentOperatorChat(t *testing.T) {
+	cfg := loadConfig(t)
+	configuration := cfg
+	configuration.Runtime.DataDir = t.TempDir()
+	runtime, err := research.NewPersistent(configuration, research.DemoFactory())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer runtime.Close()
+	response, err := runtime.Chat(context.Background(), "Explain current research state", false)
+	if err != nil || response == "" {
+		t.Fatalf("Chat() = %q, %v", response, err)
+	}
+	messages := runtime.Messages()
+	if len(messages) != 2 || messages[0].Type != messaging.TypeHumanMessage || messages[1].Recipient != "operator" {
+		t.Fatalf("messages = %#v", messages)
+	}
+}
+
+func waitForRuntimeState(t *testing.T, runtime *research.Runtime, expected research.State) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if runtime.Status().State == expected {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("state did not become %s", expected)
 }

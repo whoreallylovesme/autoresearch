@@ -216,6 +216,9 @@ func (r *Runtime) waitForTasks(ctx context.Context) error {
 func (r *Runtime) finalize(agentID string) (json.RawMessage, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.status.State == StatePaused {
+		return nil, errors.New("research is paused")
+	}
 	tasks := r.scheduler.List()
 	if len(tasks) == 0 {
 		return nil, errors.New("cannot finalize without delegated tasks")

@@ -65,13 +65,16 @@ type AccountStatus struct {
 }
 
 type Status struct {
-	Phase                        Phase                    `json:"phase"`
-	Confirmed                    Usage                    `json:"confirmed"`
-	Uncertain                    Usage                    `json:"uncertain"`
-	Reserved                     Usage                    `json:"reserved"`
-	EstimatedRemainingCostMicros int64                    `json:"estimated_remaining_cost_micros"`
-	Providers                    map[string]AccountStatus `json:"providers,omitempty"`
-	OpenReservations             []ReservationStatus      `json:"open_reservations,omitempty"`
+	Phase                         Phase                    `json:"phase"`
+	Confirmed                     Usage                    `json:"confirmed"`
+	Uncertain                     Usage                    `json:"uncertain"`
+	Reserved                      Usage                    `json:"reserved"`
+	EstimatedRemainingCostMicros  int64                    `json:"estimated_remaining_cost_micros"`
+	Providers                     map[string]AccountStatus `json:"providers,omitempty"`
+	OpenReservations              []ReservationStatus      `json:"open_reservations,omitempty"`
+	SoftLimitCostMicros           int64                    `json:"soft_limit_cost_micros"`
+	HardLimitCostMicros           int64                    `json:"hard_limit_cost_micros"`
+	FinalizationReserveCostMicros int64                    `json:"finalization_reserve_cost_micros"`
 }
 
 type ReservationStatus struct {
@@ -260,6 +263,7 @@ func (m *Manager) Status() Status {
 
 func (m *Manager) statusLocked() Status {
 	status := Status{
+		SoftLimitCostMicros: m.limits.SoftCostMicros, HardLimitCostMicros: m.limits.HardCostMicros, FinalizationReserveCostMicros: m.limits.FinalizationReserveMicros,
 		Phase: m.phase, Confirmed: m.account.confirmed, Uncertain: m.account.uncertain, Reserved: m.account.reserved,
 		EstimatedRemainingCostMicros: m.limits.HardCostMicros - add(m.account.confirmed, m.account.uncertain, m.account.reserved).CostMicros,
 		Providers:                    map[string]AccountStatus{},

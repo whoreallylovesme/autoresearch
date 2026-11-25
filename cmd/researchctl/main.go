@@ -39,6 +39,8 @@ func run(ctx context.Context, args []string) error {
 	configPath := flags.String("config", "configs/autoresearch.yaml", "main configuration path")
 	follow := flags.Bool("follow", false, "follow event stream")
 	timeout := flags.Duration("timeout", 30*time.Minute, "maximum time to wait for research")
+	message := flags.String("message", "", "operator chat message")
+	directive := flags.Bool("directive", false, "send an authoritative operator directive")
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
@@ -81,8 +83,24 @@ func run(ctx context.Context, args []string) error {
 			return nil
 		}
 		return printJSON(result)
-	case "stop":
-		return call(ctx, http.MethodPost, baseURL+"/api/v1/run/stop", nil, nil)
+	case "stop", "pause", "resume":
+		return call(ctx, http.MethodPost, baseURL+"/api/v1/run/"+command, nil, nil)
+	case "finalize":
+		var result any
+		if err := call(ctx, http.MethodPost, baseURL+"/api/v1/run/finalize", nil, &result); err != nil {
+			return err
+		}
+		return printJSON(result)
+	case "chat":
+		if *message == "" {
+			return errors.New("chat requires --message")
+		}
+		payload, _ := json.Marshal(map[string]any{"message": *message, "directive": *directive})
+		var result any
+		if err := call(ctx, http.MethodPost, baseURL+"/api/v1/chat", payload, &result); err != nil {
+			return err
+		}
+		return printJSON(result)
 	case "logs":
 		if *follow {
 			return streamEvents(ctx, baseURL)

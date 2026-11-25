@@ -162,3 +162,47 @@ func mustRequest(t *testing.T, method, url string, body []byte) *http.Request {
 	}
 	return request
 }
+
+func TestAPIPauseResumeFinalizeAndChat(t *testing.T) {
+	t.Setenv("AUTORESEARCH_DEMO_DELAY", "30ms")
+	runtime := newRuntime(t, research.DemoFactory())
+	server := httptest.NewServer(api.New(runtime))
+	defer server.Close()
+	response := request(t, http.MethodPost, server.URL+"/api/v1/run/start", nil)
+	response.Body.Close()
+	response = request(t, http.MethodPost, server.URL+"/api/v1/run/pause", nil)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("pause status = %d", response.StatusCode)
+	}
+	response.Body.Close()
+	waitForState(t, server.URL, research.StatePaused)
+	response = request(t, http.MethodPost, server.URL+"/api/v1/run/resume", nil)
+	response.Body.Close()
+	waitForState(t, server.URL, research.StateCompleted)
+	response = request(t, http.MethodPost, server.URL+"/api/v1/run/finalize", nil)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("finalize status = %d", response.StatusCode)
+	}
+	response.Body.Close()
+	response = request(t, http.MethodPost, server.URL+"/api/v1/chat", []byte(`{"message":"Explain status","directive":false}`))
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("chat status = %d", response.StatusCode)
+	}
+	var chat map[string]string
+	if err := json.NewDecoder(response.Body).Decode(&chat); err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if chat["response"] == "" {
+		t.Fatalf("chat = %#v", chat)
+	}
+	response = request(t, http.MethodGet, server.URL+"/api/v1/messages", nil)
+	var messages map[string][]json.RawMessage
+	if err := json.NewDecoder(response.Body).Decode(&messages); err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if len(messages["messages"]) < 2 {
+		t.Fatalf("messages = %#v", messages)
+	}
+}

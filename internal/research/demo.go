@@ -52,6 +52,9 @@ func demoFactory() ProviderFactory {
 }
 
 func demoChief(_ context.Context, request provider.Request) (provider.Response, error) {
+	if strings.Contains(strings.ToLower(demoUserText(request)), "operator message") {
+		return provider.Response{Content: "Operator message recorded. Current research state is available in the durable dashboard snapshot; no metrics or private reasoning traces are invented.", Usage: provider.Usage{InputTokens: 5, OutputTokens: 5}}, nil
+	}
 	steps := 0
 	for _, message := range request.Messages {
 		if message.Role == "assistant" && len(message.ToolCalls) > 0 {

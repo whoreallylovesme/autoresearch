@@ -26,8 +26,13 @@ func New(runtime *research.Runtime) *Server {
 	server := &Server{runtime: runtime, mux: http.NewServeMux(), done: make(chan error, 1)}
 	server.mux.HandleFunc("POST /api/v1/run/start", server.start)
 	server.mux.HandleFunc("POST /api/v1/run/stop", server.stop)
+	server.mux.HandleFunc("POST /api/v1/run/pause", server.pause)
+	server.mux.HandleFunc("POST /api/v1/run/resume", server.resume)
+	server.mux.HandleFunc("POST /api/v1/run/finalize", server.finalize)
+	server.mux.HandleFunc("POST /api/v1/chat", server.chat)
 	server.mux.HandleFunc("GET /api/v1/run/status", server.status)
 	server.mux.HandleFunc("GET /api/v1/agents", server.agents)
+	server.mux.HandleFunc("GET /api/v1/messages", server.messages)
 	server.mux.HandleFunc("GET /api/v1/tasks", server.tasks)
 	server.mux.HandleFunc("GET /api/v1/budget", server.budget)
 	server.mux.HandleFunc("GET /api/v1/events", server.events)
@@ -76,6 +81,54 @@ func (s *Server) Shutdown(ctx context.Context) {
 	case <-done:
 	case <-ctx.Done():
 	}
+}
+
+func (s *Server) pause(writer http.ResponseWriter, _ *http.Request) {
+	if err := s.runtime.Pause(); err != nil {
+		writeError(writer, http.StatusConflict, err.Error())
+		return
+	}
+	writeJSON(writer, http.StatusOK, s.runtime.Status())
+}
+
+func (s *Server) resume(writer http.ResponseWriter, _ *http.Request) {
+	if err := s.runtime.Resume(); err != nil {
+		writeError(writer, http.StatusConflict, err.Error())
+		return
+	}
+	writeJSON(writer, http.StatusOK, s.runtime.Status())
+}
+
+func (s *Server) finalize(writer http.ResponseWriter, _ *http.Request) {
+	report, err := s.runtime.RequestFinalize()
+	if err != nil {
+		writeError(writer, http.StatusConflict, err.Error())
+		return
+	}
+	writeJSON(writer, http.StatusOK, map[string]string{"report": report})
+}
+
+func (s *Server) chat(writer http.ResponseWriter, request *http.Request) {
+	var input struct {
+		Message   string `json:"message"`
+		Directive bool   `json:"directive"`
+	}
+	decoder := json.NewDecoder(http.MaxBytesReader(writer, request.Body, 1<<20))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&input); err != nil || input.Message == "" {
+		writeError(writer, http.StatusBadRequest, "message is required")
+		return
+	}
+	response, err := s.runtime.Chat(request.Context(), input.Message, input.Directive)
+	if err != nil {
+		writeError(writer, http.StatusConflict, err.Error())
+		return
+	}
+	writeJSON(writer, http.StatusOK, map[string]string{"response": response})
+}
+
+func (s *Server) messages(writer http.ResponseWriter, _ *http.Request) {
+	writeJSON(writer, http.StatusOK, map[string]any{"messages": s.runtime.Messages()})
 }
 
 func (s *Server) stop(writer http.ResponseWriter, _ *http.Request) {

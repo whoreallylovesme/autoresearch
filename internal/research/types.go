@@ -14,6 +14,7 @@ type State string
 const (
 	StateCreated    State = "created"
 	StateRunning    State = "running"
+	StatePaused     State = "paused"
 	StateFinalizing State = "finalizing"
 	StateCompleted  State = "completed"
 	StateFailed     State = "failed"
@@ -23,6 +24,7 @@ const (
 type Status struct {
 	ID        string        `json:"id"`
 	Name      string        `json:"name"`
+	Objective string        `json:"objective"`
 	State     State         `json:"state"`
 	StartedAt time.Time     `json:"started_at"`
 	EndedAt   time.Time     `json:"ended_at,omitempty"`

@@ -44,6 +44,7 @@ type Runtime struct {
 	nextFinding   uint64
 	workers       sync.WaitGroup
 	cancel        context.CancelFunc
+	resume        chan struct{}
 }
 
 func New(configuration *config.Config, factory ProviderFactory) (*Runtime, error) {
@@ -60,7 +61,7 @@ func New(configuration *config.Config, factory ProviderFactory) (*Runtime, error
 	}
 	runtime := &Runtime{
 		configuration: configuration, scheduler: scheduler.New(configuration.Runtime.MaxParallelTasks, 30*time.Second), budget: budget.NewManager(limits),
-		agents: map[string]*instance{}, status: Status{ID: configuration.Name, Name: configuration.Name, State: StateCreated},
+		agents: map[string]*instance{}, status: Status{ID: configuration.Name, Name: configuration.Name, Objective: configuration.Task.Objective, State: StateCreated}, resume: make(chan struct{}),
 	}
 	if err := runtime.addAgent("chief", configuration.Chief, factory); err != nil {
 		return nil, err
@@ -131,7 +132,16 @@ func (r *Runtime) Run(ctx context.Context) error {
 	}
 	r.workers.Add(1)
 	go r.maintenanceLoop(runContext)
-	_, err := chief.runner.Execute(runContext, agent.Assignment{RunID: r.status.ID, Objective: r.configuration.Task.Objective, Restrictions: r.configuration.Task.Restrictions})
+	var err error
+	for {
+		_, err = chief.runner.Execute(runContext, agent.Assignment{RunID: r.status.ID, Objective: r.configuration.Task.Objective, Restrictions: r.configuration.Task.Restrictions})
+		if err == nil && r.currentState() == StatePaused {
+			if err = r.waitForResume(runContext); err == nil {
+				continue
+			}
+		}
+		break
+	}
 	cancel()
 	r.workers.Wait()
 	r.mu.Lock()
@@ -162,6 +172,14 @@ func (r *Runtime) Run(ctx context.Context) error {
 func (r *Runtime) workerLoop(ctx context.Context, id string, current *instance) {
 	defer r.workers.Done()
 	for {
+		if r.isPaused() {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(10 * time.Millisecond):
+				continue
+			}
+		}
 		lease, err := r.scheduler.Lease(ctx, scheduler.Worker{ID: id, Roles: []string{current.configuration.Role}})
 		if errors.Is(err, scheduler.ErrNoReadyTask) {
 			select {
