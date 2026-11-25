@@ -75,8 +75,10 @@ type ModelConfig struct {
 	Capabilities Capabilities
 	Retry        RetryConfig
 	Timeout      Duration
-	RateLimit    RateLimitConfig `yaml:"rate_limit"`
-	SourcePath   string          `yaml:"-"`
+	RateLimit    RateLimitConfig  `yaml:"rate_limit"`
+	Pricing      *PricingConfig   `yaml:"pricing"`
+	Estimation   EstimationConfig `yaml:"estimation"`
+	SourcePath   string           `yaml:"-"`
 }
 
 type Capabilities struct {
@@ -85,6 +87,17 @@ type Capabilities struct {
 	StructuredOutputs   bool     `yaml:"structured_outputs"`
 	SupportedParameters []string `yaml:"supported_parameters"`
 	ReasoningEfforts    []string `yaml:"reasoning_efforts"`
+}
+
+type PricingConfig struct {
+	InputUSDPerMillion     float64 `yaml:"input_usd_per_million"`
+	OutputUSDPerMillion    float64 `yaml:"output_usd_per_million"`
+	CachedUSDPerMillion    float64 `yaml:"cached_usd_per_million"`
+	ReasoningUSDPerMillion float64 `yaml:"reasoning_usd_per_million"`
+}
+
+type EstimationConfig struct {
+	MaxInputTokens int64 `yaml:"max_input_tokens"`
 }
 
 type RetryConfig struct {

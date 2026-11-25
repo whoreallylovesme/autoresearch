@@ -51,16 +51,18 @@ type agentFile struct {
 }
 
 type modelFile struct {
-	Version      int             `yaml:"version"`
-	Provider     string          `yaml:"provider"`
-	Model        string          `yaml:"model"`
-	APIKeyEnv    string          `yaml:"api_key_env"`
-	BaseURL      string          `yaml:"base_url"`
-	Parameters   map[string]any  `yaml:"parameters"`
-	Capabilities Capabilities    `yaml:"capabilities"`
-	Retry        RetryConfig     `yaml:"retry"`
-	Timeout      Duration        `yaml:"timeout"`
-	RateLimit    RateLimitConfig `yaml:"rate_limit"`
+	Version      int              `yaml:"version"`
+	Provider     string           `yaml:"provider"`
+	Model        string           `yaml:"model"`
+	APIKeyEnv    string           `yaml:"api_key_env"`
+	BaseURL      string           `yaml:"base_url"`
+	Parameters   map[string]any   `yaml:"parameters"`
+	Capabilities Capabilities     `yaml:"capabilities"`
+	Retry        RetryConfig      `yaml:"retry"`
+	Timeout      Duration         `yaml:"timeout"`
+	RateLimit    RateLimitConfig  `yaml:"rate_limit"`
+	Pricing      *PricingConfig   `yaml:"pricing"`
+	Estimation   EstimationConfig `yaml:"estimation"`
 }
 
 type taskFile struct {
@@ -207,7 +209,7 @@ func (l *loader) loadModel(path string) (ModelConfig, error) {
 	if err := l.decode(path, &raw); err != nil {
 		return ModelConfig{}, err
 	}
-	model := ModelConfig{Version: raw.Version, Provider: raw.Provider, Model: raw.Model, APIKeyEnv: raw.APIKeyEnv, BaseURL: raw.BaseURL, Parameters: raw.Parameters, Capabilities: raw.Capabilities, Retry: raw.Retry, Timeout: raw.Timeout, RateLimit: raw.RateLimit, SourcePath: path}
+	model := ModelConfig{Version: raw.Version, Provider: raw.Provider, Model: raw.Model, APIKeyEnv: raw.APIKeyEnv, BaseURL: raw.BaseURL, Parameters: raw.Parameters, Capabilities: raw.Capabilities, Retry: raw.Retry, Timeout: raw.Timeout, RateLimit: raw.RateLimit, Pricing: raw.Pricing, Estimation: raw.Estimation, SourcePath: path}
 	if err := validateModel(&model); err != nil {
 		return ModelConfig{}, fmt.Errorf("%s: %w", path, err)
 	}
