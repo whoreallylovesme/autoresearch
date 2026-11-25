@@ -1,0 +1,9 @@
+version: 1
+name: literature-review-demo
+task: ./literature-task.txt
+criterion_of_end: ./literature-completion.txt
+restrictions: ./literature-restrictions.txt
+deliverables: [research-report, literature-review]
+verification:
+  type: custom-command
+  config: ./verification.yaml

@@ -38,6 +38,7 @@ type Runtime struct {
 	persistence   *runtimePersistence
 	recovered     bool
 	persistentErr error
+	science       *runtimeScience
 	nextTask      uint64
 	nextFinding   uint64
 	workers       sync.WaitGroup
@@ -68,6 +69,7 @@ func New(configuration *config.Config, factory ProviderFactory) (*Runtime, error
 			return nil, err
 		}
 	}
+	runtime.science = newRuntimeScience(runtime.status.ID, configuration.Task.Objective)
 	runtime.recordEventLocked("research.created", "runtime", "", nil)
 	return runtime, nil
 }

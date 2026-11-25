@@ -1,0 +1,1 @@
+Produce a metadata-level literature review of multi-agent scientific coordination using the AutoGen and CAMEL papers. Register a hypothesis, collect independent worker findings with exact arXiv citations, and obtain independent criticism. Clearly distinguish bibliographic metadata, agent interpretation, and verified evidence.

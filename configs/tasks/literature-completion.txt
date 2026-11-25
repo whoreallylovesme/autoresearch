@@ -1,0 +1,1 @@
+Complete when both papers have persistent cited interpretation nodes, the hypothesis and citation edges are present in the research graph, independent criticism is recorded, and the report states the metadata-only limitation.

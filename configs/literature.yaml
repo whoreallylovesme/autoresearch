@@ -1,0 +1,26 @@
+version: 1
+name: literature-review-demo
+
+chief:
+  config: agents/chief-scientist.yaml
+workers:
+  - config: agents/baby-scientist.yaml
+    headcount: 2
+  - config: agents/developer.yaml
+    headcount: 1
+  - config: agents/critic.yaml
+    headcount: 1
+  - config: agents/brainstormer.yaml
+    headcount: 1
+
+task: tasks/literature.yaml
+budget: budget.yaml
+executors: executors.yaml
+
+runtime:
+  autonomous: true
+  max_parallel_tasks: 4
+  checkpoint_interval: 10s
+  resume_on_restart: true
+  data_dir: ./data/literature
+  listen: 127.0.0.1:8080
