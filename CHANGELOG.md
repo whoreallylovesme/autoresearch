@@ -25,3 +25,7 @@ All notable changes are documented here. The project follows Semantic Versioning
 - NiceGUI research control center with live dashboards, agent details, interactive graph, Plotly, experiments, and reports.
 - Resumable live SSE, persistent Chief Scientist chat, and start/pause/resume/finalize/stop controls.
 - Python unit tests and repeatable headless Chromium browser acceptance.
+- Full literature + experiment research session and event-sequence playback.
+- Local Qwen/llama.cpp HFMock provider with bounded, citation-safe narration and live autonomous run.
+- Hierarchical context compaction, shared provider rate limits, Prometheus metrics, and W3C trace context.
+- CLI project initialization and deterministic operator directives.

@@ -17,7 +17,7 @@ The public interface at `https://pequalnp.com/` was inspected for interaction id
 - **Experiments:** status, executor, configuration, revision, runtime, hardware metrics when available, logs, results, verification, and artifacts.
 - **Events:** chronological feed with agent, task, type, severity, and direction filters and resumable live updates.
 - **Chief chat:** persistent operator conversation and distinct authoritative directive controls alongside the current view.
-- **Playback:** event-sequence replay of earlier runs with play, pause, seek, and speed controls.
+- **Playback:** implemented event-sequence replay with play, pause, seek, speed controls, and task/hypothesis/experiment/conclusion projections.
 
 ## Real-time contract
 

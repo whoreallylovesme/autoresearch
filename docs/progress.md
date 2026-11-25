@@ -4,54 +4,50 @@ Last updated: 2026-11-25
 
 ## Current status
 
-Milestones 0–5 are complete. Milestone 6 (full autonomous research and hardening) is active.
+All six roadmap milestones are complete and verified on the remote VPS.
 
-## Implemented and verified
+## Delivered system
 
-### Runtime and scientific infrastructure
+### Autonomous runtime and reliability
 
-- Strict YAML, native agents, provider abstraction, concurrent budgets, scheduler leases, persistent messages/events, and crash recovery.
-- Research graph, verifier-gated hypotheses, FTS5 knowledge, cached arXiv/PDF processing, and cited literature review.
-- Restricted Docker and SSH execution, Git worktrees, benchmark/custom-command verification, reproducibility records, and an autonomous verified computational experiment.
+- Strict versioned YAML, native configurable agents, replaceable providers, concurrent budget reservations, provider quotas, and scheduler leases with fencing.
+- SQLite WAL migrations, transactional snapshots and append-only events, durable messages/budgets, content-addressed artifacts, checkpoints, and forced-`SIGKILL` recovery against the real daemon.
+- Graceful shutdown, pause/resume/finalize/stop controls, deterministic priority/cancel directives, and idempotent recovery semantics.
 
-### Python control center
+### Scientific research and execution
 
-- NiceGUI overview with objective, lifecycle, agents, tasks, experiments, papers, hypotheses, and budget metrics.
-- Agent fleet and individual agent detail pages with models, providers, states, heartbeats, usage, tasks, and event history.
-- Cytoscape.js graph with pan/zoom, clickable nodes, status/author/timeline filters, live refresh, and an accessible semantic node table.
-- Plotly provider accounting and agent/model token tables; unavailable time series is explicitly marked unavailable.
-- Experiment dashboard with status, executor, metrics, verification, logs, and artifacts.
-- Resumable live event stream with actor/type filters, reconnection, visibility-aware resource saving, and live-state indicator.
-- Report view, persistent Chief Scientist chat, authoritative directive envelopes, and start/pause/resume/finalize/emergency-stop controls.
-- Same-origin runtime proxy, loopback-only defaults, pinned local Cytoscape assets, responsive tables, keyboard-scrollable regions, focus indicators, and touch-sized controls.
+- Revisioned research graph with typed nodes/edges and verifier-gated hypotheses; FTS5 paper/claim knowledge with source locations and DOI/arXiv deduplication.
+- Cached arXiv/PDF fetching with shared downloads, attribution, retries, rate limits, and bounded `pdftotext` extraction.
+- Restricted pinned Docker execution, Git worktrees, SSH execution, benchmark/custom-command verification, and durable reproducibility records including failed/refuted outcomes.
+- A combined research session that investigates AutoGen and CAMEL, registers two hypotheses, executes and verifies a seeded computational experiment, obtains criticism, finalizes a report, and exposes the full event timeline.
+
+### Control center and local inference
+
+- NiceGUI overview, agent fleet/detail pages, Cytoscape graph, Plotly budget, experiment dashboard, reports, live SSE events, and persistent Chief Scientist chat.
+- Event-sequence playback with play/pause/seek/speed and projected task, hypothesis, experiment, and conclusion state.
+- Qwen2.5 0.5B GGUF on llama.cpp with pinned image/model hashes. `HFMockProvider` uses deterministic tool plans and bounded local narration; fabricated/source-like narration is rejected in favor of a safe fallback.
+- Hierarchical context compaction, shared provider endpoint rate limiting, Prometheus metrics, W3C `traceparent`, and standalone `researchctl init` scaffolding.
+- systemd templates for runtime, UI, and llama.cpp; browser and local-model acceptance scripts.
 
 ## Verification evidence
 
-- Go: `make fmt-check`, `make lint`, `make test`, `make test-integration`, `make validate`.
-- Acceptance demos: `make run-demo`, `make literature-demo`, `make experiment-demo`.
-- Python: `make web-lint`, `make web-test`.
-- Browser: `make browser-test` starts fresh `researchd` and NiceGUI processes, runs the experiment, and verifies live events, Cytoscape graph, Plotly, experiments, fleet links, and persistent chat in Chromium.
-- Forced daemon recovery, real Docker execution, and race detection are exercised on the VPS. No paid API or GPU is used.
+All checks run on the VPS without paid API calls or GPU:
 
-## Known limitations
+- `make fmt-check lint test test-integration validate`
+- `make run-demo literature-demo experiment-demo full-research-demo`
+- `make local-model-demo`
+- `make web-lint web-test browser-test`
 
-- Research playback and advanced long-horizon context compaction are not implemented.
-- The local Hugging Face/llama.cpp inference smoke test is not yet deployed.
-- Development uses root-managed Docker; rootless deployment remains hardening work. SSH uses local fixtures, and Slurm is not implemented.
-- Real providers have local contract tests only; no paid live call has been attempted.
-- The UI is loopback-only by design. Remote exposure requires authenticated TLS infrastructure.
+The full research test proves two cited papers, proposed and verified hypotheses, a verified Docker experiment, criticism, final report, and playback. The live local-model test proves an autonomous run and chat. Chromium verifies events, graph, Plotly, experiments, playback, fleet links, and persistent chat. Forced daemon recovery and race detection are also green.
 
-## Blockers
+## Optional extensions, not roadmap blockers
 
-None for Milestone 6. A small Qwen GGUF model and llama.cpp can run on the VPS CPU without paid credentials.
+- Rootless Docker production profiles and authenticated remote UI deployment.
+- Paid-provider live conformance tests only with an explicit operator test budget.
+- Optional Slurm and additional literature sources.
+- Official external agent backends after protocol-specific validation.
+- Richer distributed trace spans and optional vector retrieval when justified by measured needs.
 
-## Next implementation steps
+## Handoff
 
-1. Deploy pinned llama.cpp and Qwen2.5 0.5B GGUF, then verify the OpenAI-compatible local provider end to end.
-2. Add research playback from stored event sequences.
-3. Harden hierarchical context summaries, provider quotas, long-horizon finalization, and deployment templates.
-4. Complete full-stack verification, CI, and public release documentation.
-
-## Next handoff
-
-Use `/opt/autoresearch` on the remote VPS and sibling milestone worktrees. Run all builds, model inference, and browser tests on that host. Keep secrets and private research data outside Git and read this file plus the roadmap before continuing.
+The public repository is `https://github.com/whoreallylovesme/autoresearch`. Development and runtime execution were performed on the remote VPS in `/opt/autoresearch` and sibling milestone worktrees. Private credentials and research data are not committed. Use the README quick start and deployment guide; do not treat small-model narration as scientific evidence.

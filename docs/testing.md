@@ -13,6 +13,8 @@ make validate
 make run-demo
 make literature-demo
 make experiment-demo
+make full-research-demo
+make local-model-demo
 make web-lint
 make web-test
 make browser-test
@@ -41,4 +43,4 @@ Two process-level tests exercise recovery. The runtime helper commits one result
 
 ## Demonstration
 
-The deterministic demo exercises supervisor delegation, multiple workers, independent criticism, budget accounting, durable events, and a final evidence-linked report. A separate local Hugging Face model smoke test checks the OpenAI-compatible provider; it is not a deterministic test oracle.
+The deterministic demos exercise delegation, criticism, budget accounting, durable events, literature, experiments, and final reports. `full-research-demo` combines literature, hypotheses, sandboxed execution, verification, and playback in one session. `local-model-demo` downloads and SHA-verifies Qwen GGUF, runs llama.cpp, and proves a real autonomous run with bounded HF narration and chat.

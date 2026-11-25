@@ -26,11 +26,15 @@ Use a dedicated unprivileged service account for production. Run `make literatur
 
 ## Local Hugging Face inference
 
-The experimental demo uses `python@sha256:191083cdf6c7bda8c76158983163ead5d5cf7b77cf3033e805bb0f5296f51b4b`; pull it before running `make experiment-demo`. The lightweight local smoke-test model is `Qwen/Qwen2.5-0.5B-Instruct-GGUF`, served by llama.cpp with CPU inference. Model files live outside Git. Pin the server revision and model SHA-256 in a real deployment. A small model is useful for transport and lifecycle testing, not for high-stakes scientific correctness.
+The experimental demo uses `python@sha256:191083cdf6c7bda8c76158983163ead5d5cf7b77cf3033e805bb0f5296f51b4b`; pull it before running `make experiment-demo`. The local model is `Qwen/Qwen2.5-0.5B-Instruct-GGUF` (q4_k_m, SHA-256 `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db`), served by `ghcr.io/ggml-org/llama.cpp@sha256:b0cd5490eefff30b40dcd47f7249a7d7211136908f73fe440a2a86b35a22b23b`. `make local-model-demo` verifies both artifacts and uses `--ctx-size 8192 --parallel 2` for 4096 tokens per slot. Model files live outside Git. A small model is useful for transport and bounded narration, not high-stakes scientific correctness.
 
 ## Backup and upgrade
 
 Stop new work or use a consistent SQLite backup, include artifact manifests and configuration snapshots, verify checksums, then apply migrations. Keep the previous binary for rollback. Never copy live SQLite files without a SQLite-aware consistent backup procedure.
+
+## systemd templates
+
+`deploy/researchd.service`, `deploy/autoresearch-ui.service`, and `deploy/autoresearch-llama.service` are reviewed templates, not enabled services. Adjust service users and private paths before installation. Do not expose loopback services publicly without authenticated TLS.
 
 ## Emergency stop
 

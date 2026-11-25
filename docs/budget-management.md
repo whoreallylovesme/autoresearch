@@ -20,7 +20,7 @@ Before a model request, the manager atomically reserves its configured maximum e
 
 ## Dimensions
 
-Accounting independently tracks money, input/output/reasoning/cached tokens, requests, provider quotas, runtime, CPU, GPU, disk, and parallelism. Pricing is configurable and versioned in the run snapshot. Estimated and provider-confirmed cost remain separate. Unknown metrics are `null`, never zero or invented values.
+Accounting independently tracks money, input/output/reasoning/cached tokens, requests, provider quotas, runtime, CPU, GPU, disk, and parallelism. Agent instances for the same provider endpoint share one rate limiter, so per-provider limits are not multiplied by fleet size. Pricing is configurable and versioned in the run snapshot. Estimated and provider-confirmed cost remain separate. Unknown metrics are `null`, never zero or invented values.
 
 ## Limits
 

@@ -1,0 +1,18 @@
+[Unit]
+Description=AutoResearch Go runtime
+After=network.target autoresearch-llama.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/autoresearch
+ExecStart=/opt/autoresearch/bin/researchd --config configs/experiment.yaml --data-dir /srv/autoresearch-private
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/autoresearch-private /opt/autoresearch/bin
+
+[Install]
+WantedBy=multi-user.target

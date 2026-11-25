@@ -35,7 +35,7 @@ Delivery is at least once. Consumers deduplicate by message ID or operation idem
 
 ## Context and memory
 
-Context is assembled from the current task, recent relevant messages, structured findings, summaries, and artifact references. Hierarchical summaries retain contradictions and provenance. Original artifacts remain inspectable. No scientific state exists only in a conversation transcript.
+Context is assembled from the current task, recent relevant messages, structured findings, summaries, and artifact references. Bounded hierarchical compaction preserves tool errors and contradictory evidence while retaining recent messages and provenance. Original artifacts remain inspectable. No scientific state exists only in a conversation transcript.
 
 ## Health
 

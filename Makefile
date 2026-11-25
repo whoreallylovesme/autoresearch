@@ -1,6 +1,6 @@
 GO ?= go
 
-.PHONY: fmt fmt-check lint test test-integration run-demo literature-demo experiment-demo control-center browser-test web-setup web-lint web-test validate
+.PHONY: fmt fmt-check lint test test-integration run-demo literature-demo experiment-demo control-center browser-test full-research-demo local-model-demo web-setup web-lint web-test validate
 
 fmt:
 	$(GO) fmt ./...
@@ -44,3 +44,9 @@ control-center:
 
 browser-test: web-setup
 	bash scripts/browser-smoke.sh
+
+local-model-demo:
+	bash scripts/local-model-demo.sh
+
+full-research-demo:
+	bash scripts/demo.sh configs/full-research.yaml

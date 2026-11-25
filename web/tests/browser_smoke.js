@@ -20,8 +20,12 @@ const assert = require('node:assert/strict');
     assert.ok(await page.locator('.js-plotly-plot').count() > 0);
     await page.goto(`${baseURL}/experiments`, { waitUntil: 'networkidle' });
     assert.match(await page.locator('body').innerText(), /verified/);
+    await page.goto(`${baseURL}/playback`, { waitUntil: 'networkidle' });
+    assert.match(await page.locator('body').innerText(), /Tasks at selected event/);
     await page.goto(`${baseURL}/agents`, { waitUntil: 'networkidle' });
     assert.match(await page.locator('body').innerText(), /Open worker-1/);
+    await page.goto(`${baseURL}/agents/worker-1`, { waitUntil: 'networkidle' });
+    assert.match(await page.locator('body').innerText(), /Agent task history/);
     await page.goto(`${baseURL}/`, { waitUntil: 'networkidle' });
     await page.locator('textarea[aria-label="Message to Chief Scientist"]').fill('Summarize verification status');
     await page.getByRole('button', { name: /send message/i }).click();
@@ -30,7 +34,7 @@ const assert = require('node:assert/strict');
     const messages = await response.json();
     assert.ok(messages.messages.length >= 2);
     assert.deepEqual(errors, []);
-    console.log('Browser acceptance passed: events, graph, budget, experiments, fleet, and persistent chat');
+    console.log('Browser acceptance passed: events, graph, budget, experiments, playback, fleet, and persistent chat');
   } finally {
     await browser.close();
   }

@@ -2,7 +2,7 @@
 
 AutoResearch is an open-source runtime for long-running, multi-agent scientific research. A configurable Chief Scientist coordinates replaceable research, development, brainstorming, and criticism agents while deterministic Go infrastructure enforces budgets, scheduling, isolation, verification, and auditability.
 
-**Current status:** Milestones 1–5 (autonomous runtime, persistence, scientific research, verified execution, and the Python control center) are implemented and verified. Milestone 6 is active. The [progress log](docs/progress.md) is the source of truth; planned features are not presented as available.
+**Current status:** All six roadmap milestones are implemented and verified, including a combined literature + experiment research session, local Hugging Face inference, and research playback. The [progress log](docs/progress.md) is the source of truth; planned features are not presented as available.
 
 ## Design principles
 
@@ -39,6 +39,9 @@ make test-integration
 make run-demo
 make literature-demo
 make experiment-demo
+make full-research-demo
+make local-model-demo
+make browser-test
 ```
 
 The demo builds `researchd` and `researchctl`, starts a loopback API, and completes an autonomous Chief Scientist run with two research workers and independent criticism. To operate a daemon manually:
@@ -60,7 +63,7 @@ go build -o bin/researchctl ./cmd/researchctl
 ./bin/researchctl resume
 ```
 
-Research state uses SQLite WAL, transactional events/snapshots, durable messages, budget snapshots, and checksummed artifacts. Forced-termination recovery is tested against the real daemon. The scientific layer includes a revisioned research graph, verifier-gated hypotheses, FTS5 paper/claim search, a deduplicating arXiv/PDF fetcher, and a cited literature-review demo. Experimental execution includes pinned Docker isolation, Git worktrees, benchmark/custom-command verification, reproducibility records, and an SSH adapter. The NiceGUI control center provides live dashboards, fleet details, an interactive research graph, budget charts, experiments, events, reports, persistent Chief Scientist chat, and operator controls. Research playback and additional long-horizon hardening belong to Milestone 6. See [deployment](docs/deployment.md), [configuration](docs/configuration.md), and the [roadmap](docs/roadmap.md).
+Research state uses SQLite WAL, transactional events/snapshots, durable messages, budget snapshots, and checksummed artifacts. Forced-termination recovery is tested against the real daemon. The scientific layer includes a revisioned research graph, verifier-gated hypotheses, FTS5 paper/claim search, a deduplicating arXiv/PDF fetcher, and a cited literature-review demo. Experimental execution includes pinned Docker isolation, Git worktrees, benchmark/custom-command verification, reproducibility records, and an SSH adapter. The NiceGUI control center provides live dashboards, fleet details, an interactive research graph, budget charts, experiments, events, reports, persistent Chief Scientist chat, and operator controls. Research playback, shared provider rate limiting, bounded context compaction, Prometheus metrics, W3C trace context, and a bounded local Qwen narration provider are also included. Optional production hardening is documented in `docs/progress.md`. See [deployment](docs/deployment.md), [configuration](docs/configuration.md), and the [roadmap](docs/roadmap.md).
 
 ## Documentation
 

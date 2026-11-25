@@ -76,6 +76,7 @@ async def shell(title: str) -> Any:
                 ("Experiments", "/experiments"),
                 ("Events", "/events"),
                 ("Report", "/report"),
+                ("Playback", "/playback"),
             ]:
                 ui.link(label, path).classes("text-slate-200")
     with ui.right_drawer().classes("chat-panel"):
@@ -447,16 +448,6 @@ async def report_page() -> None:
         ui.timer(5.0, refresh)
 
 
-if __name__ == "__main__":
-    ui.run(
-        host=os.getenv("AUTORESEARCH_UI_HOST", "127.0.0.1"),
-        port=int(os.getenv("AUTORESEARCH_UI_PORT", "8081")),
-        title="AutoResearch Control Center",
-        show=False,
-        reload=False,
-    )
-
-
 @ui.page("/agents/{agent_id}")
 async def agent_detail_page(agent_id: str) -> None:
     main = await shell(f"Agent {agent_id}")
@@ -495,3 +486,109 @@ async def agent_detail_page(agent_id: str) -> None:
             ),
             sanitize=False,
         )
+
+
+@ui.page("/playback")
+async def playback_page() -> None:
+    main = await shell("Research playback")
+    with main:
+        events_payload = await runtime.get("events")
+        maximum = max([event.get("sequence", 0) for event in events_payload.get("events") or []] or [0])
+        playback = {"until": maximum, "playing": False, "speed": 1}
+        status = ui.label().classes("text-lg")
+        event_label = ui.label().classes("muted")
+        tasks_table = ui.column().classes("w-full")
+        graph_table = ui.column().classes("w-full")
+        experiments_table = ui.column().classes("w-full")
+        report = ui.html().classes("report-content panel")
+
+        async def refresh() -> None:
+            frame = await runtime.get(f"playback?until={playback['until']}")
+            status.set_text(f"Event {frame.get('until')} / {maximum} · {frame.get('research_state')}")
+            history = frame.get("events") or []
+            if history:
+                latest = history[-1]
+                event_label.set_text(f"{latest.get('timestamp')} · {latest.get('type')} · {latest.get('actor')}")
+            tasks_table.clear()
+            with tasks_table:
+                ui.html(
+                    semantic_table(
+                        "Tasks at selected event",
+                        ["Task", "State", "Agent", "Attempts"],
+                        [
+                            [t.get("id"), t.get("state"), t.get("assigned_agent", "—"), t.get("attempts")]
+                            for t in frame.get("tasks") or []
+                        ],
+                    ),
+                    sanitize=False,
+                )
+            hypotheses = [
+                node for node in (frame.get("graph", {}).get("nodes") or []) if node.get("type") == "hypothesis"
+            ]
+            graph_table.clear()
+            with graph_table:
+                ui.html(
+                    semantic_table(
+                        "Hypotheses at selected event",
+                        ["Hypothesis", "Status", "Revision"],
+                        [[h.get("id"), h.get("status"), h.get("revision")] for h in hypotheses],
+                    ),
+                    sanitize=False,
+                )
+            experiments_table.clear()
+            with experiments_table:
+                ui.html(
+                    semantic_table(
+                        "Experiments at selected event",
+                        ["Experiment", "Status", "Metrics"],
+                        [
+                            [e.get("id"), e.get("status"), json.dumps(e.get("metrics", {}))]
+                            for e in frame.get("experiments") or []
+                        ],
+                    ),
+                    sanitize=False,
+                )
+            report.set_content(
+                "<pre>" + html.escape(frame.get("report") or "Report is not finalized at this event.") + "</pre>"
+            )
+
+        def seek(value: float) -> None:
+            playback["until"] = int(value)
+            playback["playing"] = False
+            play_button.set_text("Play")
+
+        async def tick() -> None:
+            if not playback["playing"]:
+                return
+            playback["until"] = min(maximum, playback["until"] + playback["speed"])
+            if playback["until"] >= maximum:
+                playback["playing"] = False
+                play_button.set_text("Play")
+            slider.set_value(playback["until"])
+            await refresh()
+
+        def toggle_play() -> None:
+            playback["playing"] = not playback["playing"]
+            play_button.set_text("Pause" if playback["playing"] else "Play")
+
+        with ui.row().classes("toolbar items-center gap-3"):
+            play_button = ui.button("Play", on_click=toggle_play)
+            speed = ui.select([1, 2, 4], value=1, label="Events per tick")
+            speed.on_value_change(lambda event: playback.update(speed=int(event.value)))
+            slider = (
+                ui.slider(min=0, max=maximum, value=maximum, on_change=lambda event: seek(event.value))
+                .classes("w-2/3")
+                .props('aria-label="Research event timeline"')
+            )
+        ui.timer(1.0, tick)
+        await refresh()
+
+
+if __name__ == "__main__":
+    ui.run(
+        host=os.getenv("AUTORESEARCH_UI_HOST", "127.0.0.1"),
+        port=int(os.getenv("AUTORESEARCH_UI_PORT", "8081")),
+        title="AutoResearch Control Center",
+        show=False,
+        reload=False,
+    )

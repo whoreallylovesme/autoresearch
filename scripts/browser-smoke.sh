@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+npm ci --prefix web
 if [ "${AUTORESEARCH_PLAYWRIGHT_SKIP_INSTALL:-0}" != "1" ]; then
   npx --prefix web playwright install --with-deps chromium
 fi

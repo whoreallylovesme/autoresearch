@@ -10,14 +10,16 @@ Status legend: **done** means implementation and acceptance checks passed; **act
 | 3. Scientific research | done | Paper Fetcher, literature APIs, PDF processing, FTS knowledge, research graph, evidence, critics | Multiple researchers produce a cited review and persistent graph |
 | 4. Experimental execution | done | Sandboxed Docker, worktrees, experiments, artifacts, verifiers, SSH, optional Slurm | Agent proposes, implements, executes, and verifies a reproducible experiment |
 | 5. Web control center | done | NiceGUI dashboards, graph, experiments, events, chat, controls | Operator monitors and redirects a live run in a browser |
-| 6. Full autonomous research | active | Multiple providers, quotas, compaction, finalization, reports, playback, hardening | Long-running session investigates, experiments, verifies, and reports within limits |
+| 6. Full autonomous research | done | Multiple providers, quotas, compaction, finalization, reports, playback, hardening | Long-running session investigates, experiments, verifies, and reports within limits |
 
 Each milestone requires focused tests, race detection where applicable, security/failure review, documentation updates, a descriptive commit, and a verified push. A later milestone must not be marked done because its types or endpoints merely exist.
 
-## Prioritized backlog after the current milestone
+## Optional hardening and extensions
 
-1. Durable crash recovery and idempotency crash-point tests.
-2. Evidence graph and source-backed literature review.
-3. OS-enforced sandbox and reproducible execution.
-4. Real-time operator control center.
-5. Long-horizon context, playback, and multi-provider hardening.
+The documented roadmap is complete. Future work is prioritized by operator need rather than claimed availability:
+
+1. Rootless Docker production profiles and remote authenticated UI deployment.
+2. Paid-provider conformance tests only with an explicit test budget.
+3. Optional Slurm, OpenAlex, Semantic Scholar, Crossref, and PubMed adapters.
+4. Official ACP/Kimi CLI/Codex/OpenCode backends after protocol-specific validation.
+5. Richer trace spans and optional vector retrieval when measured research needs justify them.
