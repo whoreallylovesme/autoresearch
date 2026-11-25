@@ -8,7 +8,7 @@ Configuration is YAML, versioned, strictly decoded, resolved relative to the ref
 
 ## Model contract
 
-Fields include `provider`, `model`, `base_url`, `api_key_env`, `parameters`, `capabilities`, `retry`, `timeout`, `rate_limit`, and provider-specific options. Secrets are environment-variable names or secret-store references, never inline values. Provider adapters declare accepted parameter names; an unsupported configured parameter is an error rather than silently ignored.
+Fields include `provider`, `model`, `base_url`, `api_key_env`, `parameters`, `capabilities`, `retry`, `timeout`, `rate_limit`, `pricing`, `estimation`, and provider-specific options. Real provider runs require per-million-token prices and `estimation.max_input_tokens`; prices are snapshotted and confirmed cost remains separate from reserved estimates. Secrets are environment-variable names or secret-store references, never inline values. Provider adapters declare accepted parameter names; an unsupported configured parameter is an error rather than silently ignored.
 
 Do not infer capabilities from a model name. Validate them against official provider documentation and explicit configuration. `max_output_tokens` maps to the adapter's supported request field. Reasoning effort and temperature are omitted unless both configured and supported.
 

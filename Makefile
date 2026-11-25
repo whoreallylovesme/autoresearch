@@ -21,4 +21,4 @@ validate:
 	$(GO) run ./cmd/researchctl validate --config configs/autoresearch.yaml
 
 run-demo:
-	$(GO) run ./cmd/researchctl run --config configs/autoresearch.yaml
+	bash scripts/demo.sh

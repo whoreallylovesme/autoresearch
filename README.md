@@ -2,7 +2,7 @@
 
 AutoResearch is an open-source runtime for long-running, multi-agent scientific research. A configurable Chief Scientist coordinates replaceable research, development, brainstorming, and criticism agents while deterministic Go infrastructure enforces budgets, scheduling, isolation, verification, and auditability.
 
-The project is under active development. The [progress log](docs/progress.md) is the source of truth for implemented functionality; planned features are not presented as available.
+**Current status:** Milestone 1 (minimal autonomous runtime) is implemented and verified. Later milestones remain active or planned. The [progress log](docs/progress.md) is the source of truth; planned features are not presented as available.
 
 ## Design principles
 
@@ -30,7 +30,32 @@ The backend is Go. The control center is Python. SQLite WAL, filesystem artifact
 
 ## Quick start
 
-A credential-free deterministic demonstration is planned as the first end-to-end acceptance test. See [deployment](docs/deployment.md), [configuration](docs/configuration.md), and the [roadmap](docs/roadmap.md) for current status and exact verification commands.
+Requires Go 1.24 and Python 3 for the demo process wrapper. No API credentials or GPU are needed.
+
+```bash
+make validate
+make test
+make test-integration
+make run-demo
+```
+
+The demo builds `researchd` and `researchctl`, starts a loopback API, and completes an autonomous Chief Scientist run with two research workers and independent criticism. To operate a daemon manually:
+
+```bash
+go build -o bin/researchd ./cmd/researchd
+go build -o bin/researchctl ./cmd/researchctl
+./bin/researchd --config configs/autoresearch.yaml
+# In another terminal:
+./bin/researchctl run --config configs/autoresearch.yaml
+./bin/researchctl status
+./bin/researchctl agents
+./bin/researchctl tasks
+./bin/researchctl budget
+./bin/researchctl logs --follow
+./bin/researchctl report
+```
+
+Milestone 1 uses in-memory research state. Restart recovery, scientific literature, sandboxed experiments, and the web control center belong to later milestones. `pause`, `resume`, `finalize`, and `chat` are reserved CLI commands but are not yet implemented. See [deployment](docs/deployment.md), [configuration](docs/configuration.md), and the [roadmap](docs/roadmap.md).
 
 ## Documentation
 

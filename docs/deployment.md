@@ -15,7 +15,8 @@ The reference target is a Linux VPS with 8 vCPU, 32 GB RAM, NVMe storage, no loc
 ## Build and run
 
 ```bash
-go build ./cmd/researchd ./cmd/researchctl
+go build -o bin/researchd ./cmd/researchd
+go build -o bin/researchctl ./cmd/researchctl
 researchctl validate --config configs/autoresearch.yaml
 researchd --config configs/autoresearch.yaml
 ```

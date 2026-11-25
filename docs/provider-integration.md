@@ -4,7 +4,7 @@
 
 Providers implement text generation, streaming, tools when supported, structured responses, usage accounting, cancellation, error classification, rate limiting, retries, and capability reporting. Agent backends are separate: a raw completion API is not an agent harness.
 
-The initial real transport is an OpenAI-compatible Chat Completions client with explicit provider profiles for OpenAI, Kimi/Moonshot, and local endpoints. Other providers and external agent harnesses require independent adapters and conformance tests.
+The implemented real transport is an OpenAI-compatible Chat Completions client with explicit provider profiles for OpenAI, Kimi/Moonshot, and local endpoints. Non-streaming generation, tool calls, streaming content/usage, cancellation, rate limits, and bounded retries are covered by local HTTP tests. No paid provider call has been made. Other providers and external agent harnesses require independent adapters and conformance tests.
 
 ## Capability validation
 
@@ -24,6 +24,6 @@ Retry only classified transient transport, throttling, and server errors, with b
 
 ## Deterministic and local test models
 
-`MockProvider` is deterministic and scripted for unit and integration tests; it performs no network calls and has zero monetary cost. A separate OpenAI-compatible local provider can target a small Hugging Face model served by llama.cpp for realistic credential-free inference. The local model is not used as a deterministic oracle and is never required by unit tests.
+`MockProvider` is implemented as a deterministic scripted provider for unit and integration tests; it performs no network calls and has zero monetary cost. Real provider runs additionally require explicit token pricing and conservative maximum-input estimation in the model YAML. A separate OpenAI-compatible local provider can target a small Hugging Face model served by llama.cpp for realistic credential-free inference. The local model is not used as a deterministic oracle and is never required by unit tests.
 
 No development test may spend paid API credits. Unattended use requires provider authentication and terms that explicitly permit automation.

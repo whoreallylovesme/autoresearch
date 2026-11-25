@@ -29,27 +29,27 @@ const (
 )
 
 type Task struct {
-	ID             string
-	RunID          string
-	Title          string
-	Description    string
-	Role           string
-	Priority       int
-	Dependencies   []string
-	IdempotencyKey string
-	MaxAttempts    int
-	RetryBackoff   time.Duration
-	CreatedAt      time.Time
-	Deadline       time.Time
-	NextAttemptAt  time.Time
-	Attempts       int
-	State          State
-	Result         Result
-	LastError      string
-	AssignedAgent  string
-	LeaseID        string
-	FencingToken   uint64
-	Metadata       map[string]string
+	ID             string            `json:"id"`
+	RunID          string            `json:"run_id"`
+	Title          string            `json:"title"`
+	Description    string            `json:"description"`
+	Role           string            `json:"role"`
+	Priority       int               `json:"priority"`
+	Dependencies   []string          `json:"dependencies,omitempty"`
+	IdempotencyKey string            `json:"idempotency_key,omitempty"`
+	MaxAttempts    int               `json:"max_attempts"`
+	RetryBackoff   time.Duration     `json:"retry_backoff"`
+	CreatedAt      time.Time         `json:"created_at"`
+	Deadline       time.Time         `json:"deadline,omitempty"`
+	NextAttemptAt  time.Time         `json:"next_attempt_at"`
+	Attempts       int               `json:"attempts"`
+	State          State             `json:"state"`
+	Result         Result            `json:"result"`
+	LastError      string            `json:"last_error,omitempty"`
+	AssignedAgent  string            `json:"assigned_agent,omitempty"`
+	LeaseID        string            `json:"lease_id,omitempty"`
+	FencingToken   uint64            `json:"fencing_token,omitempty"`
+	Metadata       map[string]string `json:"metadata,omitempty"`
 }
 
 type Result struct {

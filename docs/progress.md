@@ -4,35 +4,48 @@ Last updated: 2026-11-25
 
 ## Current status
 
-Milestone 0 is complete. Milestone 1 is active; no runtime feature is claimed as implemented yet.
+Milestones 0 and 1 are complete. Milestone 2 (persistence and reliability) is next.
 
-## Completed
+## Implemented and verified
 
-- Inspected the remote Linux development host and confirmed 8 vCPU, 32 GiB RAM, Docker, and sufficient storage.
-- Created the public GitHub repository using the authenticated account and configured a dedicated repository deploy key on the development host.
-- Established an English documentation set covering architecture, configuration, lifecycle, storage, budgets, security, providers, reproducibility, web, testing, deployment, and roadmap.
-- Added MIT licensing, contribution/security policies, example configuration, role prompts, CI, and standard development commands.
-- Selected deterministic mocks plus a separate small Hugging Face/llama.cpp local inference path; no paid API calls are needed for development.
+- Public GitHub repository, English architecture/documentation set, ADRs, MIT license, CI, configuration examples, and role prompts.
+- Strict YAML decoding with unknown-field/duplicate-key rejection, relative reference resolution, semantic tool/model/budget validation, circular-reference detection, and SHA-256 snapshots.
+- `Provider` abstraction, deterministic `MockProvider`, and OpenAI-compatible HTTP/SSE transport with tools, usage, cancellation, rate limits, classified errors, and bounded retries.
+- Concurrent budget admission with reservations, one-time reconciliation, conservative interrupted-request accounting, independent provider quotas, and finalization reserve.
+- Priority/dependency scheduler with backpressure, retries, cancellation, leases, fencing tokens, expiry recovery, and duplicate idempotency-key rejection.
+- Structured message envelopes and a bounded native agent tool-call loop with role allowlists and malformed-call handling.
+- Autonomous Chief Scientist demo delegating two research tasks and a dependent independent critic, aggregating durable-contract findings in memory, and producing a limitations-aware report.
+- Versioned REST/SSE API, `researchd`, `researchctl`, graceful server controls, and a credential-free process-level integration demo.
+
+## Verification evidence
+
+On the remote VPS, `make fmt-check`, `make lint`, `make test`, `make test-integration`, `make validate`, and `make run-demo` are the required checks. The integration test builds both binaries, starts a real daemon on a free loopback port, operates it through the CLI, and verifies the final report. Unit tests run with Go race detection and use no paid calls.
 
 ## Architectural decisions
 
-See `docs/adr/`. The main choices are single-node Go + SQLite WAL, snapshots with append-only events, at-least-once execution with idempotency, separate providers and agent backends, and a Python control center.
+See `docs/adr/`. Real provider accounting additionally requires configured per-million-token pricing and maximum input estimates. Deterministic tests are deliberately separate from the planned local Hugging Face inference smoke test.
 
-## Known bugs
+## Known limitations
 
-None recorded before implementation.
+- Research state is in memory; daemon restart does not yet resume a run.
+- Lease expiry recovery is implemented in the scheduler but is not yet wired to persistent heartbeats and process recovery.
+- Literature, research graph, experiments, sandboxing, NiceGUI, and playback are not implemented.
+- Several configured tool names are reserved and return an explicit minimal-runtime error rather than pretending to execute.
+- `pause`, `resume`, `finalize`, and `chat` CLI commands are reserved but unavailable.
+- Accounted streaming inside the research runtime is unavailable; the underlying provider streaming contract is implemented and tested.
+- Real providers have only local HTTP contract tests; no paid live call has been attempted.
 
 ## Blockers
 
-None for deterministic development. Real provider use requires operator credentials and an explicit test budget. External agent adapters require separate investigation of official protocols.
+None for Milestone 2. Real provider use requires operator credentials and an explicit test budget. External agent adapters require separate official-protocol investigation.
 
-## Pending tasks
+## Next implementation steps
 
-1. Implement strict configuration and the deterministic provider contract.
-2. Implement budget reservations, scheduler leases, native agents, and supervisor delegation.
-3. Add the daemon/CLI/API and prove the credential-free autonomous demo.
-4. Continue through persistence, scientific knowledge, execution, and web milestones.
+1. Add SQLite migrations, WAL configuration, event/task/message/budget persistence, and artifact storage.
+2. Move scheduler and runtime mutations into transactional storage with consistent checkpoints.
+3. Add heartbeats, lease recovery, graceful restart, and a forced-`SIGKILL` integration test.
+4. Implement operator pause/resume/finalize controls after durable state exists.
 
 ## Next handoff
 
-Start on the remote host in `/opt/autoresearch`. Read this file, `docs/roadmap.md`, ADRs, and the active implementation plan under `docs/superpowers/plans/`. Run all tests on that host. Commit only after tests pass and update this document with exact remaining work.
+Work on the remote host. The integrated project is in `/opt/autoresearch`; milestone worktrees are siblings under `/opt`. Read this file, the roadmap, ADRs, and implementation plans. Do not claim later milestones from their interfaces alone. Run every check on the VPS and keep secrets and real infrastructure addresses out of Git.

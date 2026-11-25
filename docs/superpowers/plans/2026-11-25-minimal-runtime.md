@@ -1,6 +1,6 @@
 # Minimal Autonomous Runtime Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Prove a Chief Scientist can delegate to configurable workers and aggregate a verified result through deterministic, tested runtime infrastructure.
 
@@ -24,10 +24,10 @@
 
 **Interfaces:** `Load(path string) (*Config, error)` returns a fully resolved configuration; `Config.Validate() error` rejects invalid headcounts, paths, tools, durations, budgets, and cycles.
 
-- [ ] Write tests for the valid demo, unknown fields, missing prompt/model references, cyclic references, invalid headcount, unsupported model parameters, and secret exclusion from snapshots.
-- [ ] Run `go test ./internal/config` and confirm undefined-loader failures.
-- [ ] Implement strict YAML nodes with duplicate-key and unknown-field checks, relative path resolution, semantic validation, and SHA-256 canonical snapshots.
-- [ ] Run package tests, formatting, vet, and commit `feat: add strict runtime configuration`.
+- [x] Write tests for the valid demo, unknown fields, missing prompt/model references, cyclic references, invalid headcount, unsupported model parameters, and secret exclusion from snapshots.
+- [x] Run `go test ./internal/config` and confirm undefined-loader failures.
+- [x] Implement strict YAML nodes with duplicate-key and unknown-field checks, relative path resolution, semantic validation, and SHA-256 canonical snapshots.
+- [x] Run package tests, formatting, vet, and commit `feat: add strict runtime configuration`.
 
 ### Task 2: Provider contracts and deterministic mock
 
@@ -35,9 +35,9 @@
 
 **Interfaces:** `Provider.Generate`, `Provider.Stream`, `Provider.Capabilities`; `MockProvider` uses a queue of deterministic responses and records requests.
 
-- [ ] Test scripted text/tool responses, cancellation, retry classification, SSE decoding, authentication-header redaction, tool arguments, usage, and unsupported parameters.
-- [ ] Implement providers with bounded exponential retry and no secret logging.
-- [ ] Run tests and commit `feat: add model provider contracts`.
+- [x] Test scripted text/tool responses, cancellation, retry classification, SSE decoding, authentication-header redaction, tool arguments, usage, and unsupported parameters.
+- [x] Implement providers with bounded exponential retry and no secret logging.
+- [x] Run tests and commit `feat: add model provider contracts`.
 
 ### Task 3: Concurrent budget manager
 
@@ -45,9 +45,9 @@
 
 **Interfaces:** `Reserve(ctx, Estimate) (Reservation, error)`, `Reservation.Reconcile(Usage) error`, `Reservation.Release(error)`, and `Manager.Status() Status`.
 
-- [ ] Test exact limits, hundreds of concurrent reservations, exhaustion, finalization reserve, cancellation, unknown usage, and duplicate reconciliation.
-- [ ] Implement mutex-protected reservation/reconciliation and explicit estimated/confirmed usage.
-- [ ] Run race tests and commit `feat: enforce concurrent research budgets`.
+- [x] Test exact limits, hundreds of concurrent reservations, exhaustion, finalization reserve, cancellation, unknown usage, and duplicate reconciliation.
+- [x] Implement mutex-protected reservation/reconciliation and explicit estimated/confirmed usage.
+- [x] Run race tests and commit `feat: enforce concurrent research budgets`.
 
 ### Task 4: Scheduler and messaging
 
@@ -55,9 +55,9 @@
 
 **Interfaces:** `Submit(Task) error`, `Lease(ctx, Worker) (*Lease, error)`, `Complete(leaseID, fencingToken, Result) error`, `Recover(now) error`.
 
-- [ ] Test dependencies, priority, duplicate idempotency keys, capacity, cancellation, lease expiry, stale fencing tokens, retry, and persistent message-envelope validation.
-- [ ] Implement the smallest correct in-memory scheduler behind storage-friendly interfaces.
-- [ ] Run race tests and commit `feat: add leased task scheduler`.
+- [x] Test dependencies, priority, duplicate idempotency keys, capacity, cancellation, lease expiry, stale fencing tokens, retry, and persistent message-envelope validation.
+- [x] Implement the smallest correct in-memory scheduler behind storage-friendly interfaces.
+- [x] Run race tests and commit `feat: add leased task scheduler`.
 
 ### Task 5: Native agents and supervisor tools
 
@@ -65,9 +65,9 @@
 
 **Interfaces:** a bounded native provider loop and runtime-owned handlers for task creation/delegation, findings, messages, budget status, and finalization.
 
-- [ ] Test unauthorized tool rejection, malformed arguments, worker result aggregation, cancellation, and deterministic multi-worker delegation.
-- [ ] Implement role-configured agents and validated tool handlers without infrastructure privilege escalation.
-- [ ] Run tests and commit `feat: implement native research agents`.
+- [x] Test unauthorized tool rejection, malformed arguments, worker result aggregation, cancellation, and deterministic multi-worker delegation.
+- [x] Implement role-configured agents and validated tool handlers without infrastructure privilege escalation.
+- [x] Run tests and commit `feat: implement native research agents`.
 
 ### Task 6: Daemon, API, CLI, and demo acceptance
 
@@ -75,7 +75,7 @@
 
 **Interfaces:** versioned status/agents/tasks/budget/events endpoints and the specified run/control commands.
 
-- [ ] Write an end-to-end test that runs the deterministic Chief Scientist, asserts multiple worker results and final report, and exercises status and cancellation.
-- [ ] Implement graceful context cancellation, SSE scaffolding, and CLI operations against the same API.
-- [ ] Run `make fmt-check lint test test-integration validate run-demo` and update README/progress/roadmap.
-- [ ] Commit `feat: deliver minimal autonomous research runtime`, inspect `git status`, and push only verified files.
+- [x] Write an end-to-end test that runs the deterministic Chief Scientist, asserts multiple worker results and final report, and exercises status and cancellation.
+- [x] Implement graceful context cancellation, SSE scaffolding, and CLI operations against the same API.
+- [x] Run `make fmt-check lint test test-integration validate run-demo` and update README/progress/roadmap.
+- [x] Commit `feat: deliver minimal autonomous research runtime`, inspect `git status`, and push only verified files.
