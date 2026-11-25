@@ -1,0 +1,39 @@
+# Credentials and private runtime state
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_*
+secrets/
+private/
+data/
+runs/
+artifacts/
+
+# Binaries and build output
+/bin/
+/dist/
+/researchd
+/researchctl
+*.test
+*.out
+coverage.*
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs and temporary files
+*.log
+tmp/

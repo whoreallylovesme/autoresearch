@@ -1,0 +1,15 @@
+version: 1
+provider: openai
+model: replace-with-a-currently-supported-model
+api_key_env: OPENAI_API_KEY
+base_url: https://api.openai.com/v1
+parameters:
+  max_output_tokens: 4096
+retry:
+  max_attempts: 3
+  backoff: exponential
+  initial_interval: 500ms
+  max_interval: 30s
+timeout: 15m
+rate_limit:
+  requests_per_minute: 60

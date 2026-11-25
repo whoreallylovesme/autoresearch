@@ -1,0 +1,19 @@
+version: 1
+provider: openai-compatible
+model: qwen2.5-0.5b-instruct
+base_url: http://127.0.0.1:8081/v1
+parameters:
+  temperature: 0
+  max_output_tokens: 1024
+capabilities:
+  streaming: true
+  tools: false
+  structured_outputs: false
+retry:
+  max_attempts: 2
+  backoff: exponential
+  initial_interval: 100ms
+  max_interval: 1s
+timeout: 2m
+rate_limit:
+  requests_per_minute: 60

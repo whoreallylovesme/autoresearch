@@ -1,0 +1,1 @@
+Use no paid APIs, GPU, private data, external publishing, or unverified scientific claims. The demonstration must complete using only deterministic providers and local resources.

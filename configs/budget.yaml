@@ -1,0 +1,20 @@
+version: 1
+money:
+  currency: USD
+  total_usd: 0
+  soft_limit_usd: 0
+  hard_limit_usd: 0
+  finalization_reserve_usd: 0
+providers:
+  mock:
+    quota:
+      max_requests: 1000
+resources:
+  max_runtime: 2h
+  max_parallel_agents: 5
+  max_gpu_hours: 0
+  max_disk_gb: 5
+termination:
+  on_soft_limit: finalize
+  on_hard_limit: stop
+  on_criterion_met: finalize

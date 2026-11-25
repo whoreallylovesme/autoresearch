@@ -1,0 +1,14 @@
+version: 1
+role: brainstormer
+model: ../models/mock.yaml
+prompt:
+  type: custom
+  path: ../../prompts/brainstormer.md
+tools: [query_knowledge, register_hypothesis, submit_finding, send_message]
+context:
+  strategy: hierarchical-summary
+  persistent_memory: true
+permissions:
+  network: none
+  filesystem: workspace-only
+  shell: false

@@ -1,0 +1,69 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        if: hashFiles('go.mod') != ''
+        with:
+          go-version: "1.24"
+      - name: Check formatting
+        if: hashFiles('go.mod') != ''
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        if: hashFiles('go.mod') != ''
+        run: go vet ./...
+      - name: Test with race detector
+        if: hashFiles('go.mod') != ''
+        run: go test -race -shuffle=on ./...
+      - name: Integration tests
+        if: hashFiles('go.mod') != ''
+        run: go test -race -tags=integration ./tests/...
+  python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        if: hashFiles('web/requirements.txt') != ''
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        if: hashFiles('web/requirements.txt') != ''
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Lint
+        if: hashFiles('web/requirements.txt') != ''
+        run: ruff check .
+      - name: Check formatting
+        if: hashFiles('web/requirements.txt') != ''
+        if: hashFiles('go.mod') != ''
+        run: ruff format --check .
+      - name: Test
+        if: hashFiles('web/requirements.txt') != ''
+        run: pytest -q
+  repository:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject whitespace errors
+        run: git diff-tree --check --root --no-commit-id -r HEAD
+      - name: Reject accidentally committed credentials
+        shell: bash
+        run: |
+          if git ls-files | grep -E '(^|/)(\.env|id_[^/]+|.*\.pem|.*\.key)$'; then
+            echo 'Potential credential file is tracked' >&2
+            exit 1
+          fi
