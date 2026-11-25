@@ -12,6 +12,17 @@ AutoResearch is an open-source runtime for long-running, multi-agent scientific 
 - **Autonomy inside explicit boundaries.** Routine work needs no approval; policy changes and external effects do.
 - **Reproducibility by default.** Experiments retain revisions, configurations, logs, checksums, and negative results.
 
+## Docker Compose
+
+Build and start the complete loopback-only stack (llama.cpp, runtime, and control center):
+
+```bash
+docker compose -f deploy/docker-compose.yml up --build
+docker compose -f deploy/docker-compose.yml exec -T researchd ./bin/researchctl run --config configs/local-hf.yaml --api http://localhost:8080
+```
+
+The Compose deployment does not mount the host Docker socket. Use `docker compose -f deploy/docker-compose.yml down` to stop it.
+
 ## Architecture
 
 ```mermaid
@@ -30,7 +41,7 @@ The backend is Go. The control center is Python. SQLite WAL, filesystem artifact
 
 ## Quick start
 
-Requires Go 1.24 and Python 3.12+ for the demo process wrapper and control center. No API credentials or GPU are needed.
+Requires Go 1.24, Python 3.12+, and [`uv`](https://docs.astral.sh/uv/) for the demo process wrapper and control center. No API credentials or GPU are needed.
 
 ```bash
 make validate

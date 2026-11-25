@@ -4,6 +4,10 @@
 
 The reference target is a Linux VPS with 8 vCPU, 32 GB RAM, NVMe storage, no local GPU, systemd, and optional Docker. Remote SSH/Slurm resources are opt-in. No real hostnames, addresses, credentials, or private research paths belong in this repository.
 
+## Docker Compose
+
+The reviewed Compose deployment builds a multi-stage Go/Python image and starts llama.cpp, `researchd`, and NiceGUI without mounting the host Docker socket. Run `docker compose -f deploy/docker-compose.yml up --build`. The UI is published at `http://127.0.0.1:8081`, the API at `127.0.0.1:8080`, and local inference at `127.0.0.1:8082`; all host bindings remain loopback-only. Use `AUTORESEARCH_MODEL_DIR` to select the external model directory and `docker compose -f deploy/docker-compose.yml down` to stop services. The default config avoids Docker-in-Docker execution; run experimental executors on the host or configure a separate rootless executor explicitly.
+
 ## Layout
 
 - Source: an operator-selected directory such as `/opt/autoresearch`.
@@ -18,6 +22,7 @@ The reference target is a Linux VPS with 8 vCPU, 32 GB RAM, NVMe storage, no loc
 ```bash
 go build -o bin/researchd ./cmd/researchd
 go build -o bin/researchctl ./cmd/researchctl
+uv sync --frozen --project web
 researchctl validate --config configs/autoresearch.yaml
 researchd --config configs/autoresearch.yaml --data-dir /srv/autoresearch-private
 ```

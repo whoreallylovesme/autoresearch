@@ -6,6 +6,15 @@ Providers implement text generation, streaming, tools when supported, structured
 
 The implemented real transport is an OpenAI-compatible Chat Completions client with explicit provider profiles for OpenAI, Kimi/Moonshot, and local endpoints. Non-streaming generation, tool calls, streaming content/usage, cancellation, rate limits, and bounded retries are covered by local HTTP tests. No paid provider call has been made. Other providers and external agent harnesses require independent adapters and conformance tests.
 
+
+## Kimi / Moonshot
+
+`KimiProvider` is a dedicated adapter over the OpenAI-compatible transport. It defaults to `https://api.moonshot.ai/v1`, requires `MOONSHOT_API_KEY`, maps portable `max_output_tokens` to `max_tokens`, supports top-level `reasoning_effort` (`low` / `high` / `max`), JSON mode via `response_format`, streaming, tool calls, and reasoning/cache-write usage fields. Capabilities can be restricted explicitly in YAML.
+
+The official integration is the hosted [Kimi API quickstart](https://platform.moonshot.ai/docs/guide/kimi-k2-5-quickstart); there is no official local “Kimi server” bundled with this project. An OpenAI-compatible private gateway may be used through `base_url`, but its model and parameter support must be configured explicitly.
+
+`configs/mixed-providers.example.yaml` demonstrates the intended fleet: OpenAI/Astra for the Chief Scientist and a separate `KimiProvider` instance for every worker. Provider instances are independent, while requests for the same provider endpoint share a rate limiter and budget quota. The mixed-fleet integration test runs an OpenAI Chief and three Kimi worker tasks through separate fake endpoints with separate credentials; no paid calls are made.
+
 ## Capability validation
 
 The adapter accepts only parameters declared by its profile and configured capabilities. It never silently maps `reasoning_effort`, temperature, token limits, or provider extensions to unsupported fields. Model names, prices, quotas, and reasoning levels are configuration, not constants.

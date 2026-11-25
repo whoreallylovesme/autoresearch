@@ -8,7 +8,10 @@ Configuration is YAML, versioned, strictly decoded, resolved relative to the ref
 
 ## Model contract
 
-Fields include `provider`, `model`, `base_url`, `api_key_env`, `parameters`, `capabilities`, `retry`, `timeout`, `rate_limit`, `pricing`, `estimation`, and provider-specific options. Real provider runs require per-million-token prices and `estimation.max_input_tokens`; prices are snapshotted and confirmed cost remains separate from reserved estimates. Secrets are environment-variable names or secret-store references, never inline values. Provider adapters declare accepted parameter names; an unsupported configured parameter is an error rather than silently ignored.
+For a mixed OpenAI-Chief/Kimi-worker fleet, copy `configs/mixed-providers.example.yaml`, set the actual Astra model identifier and current prices, and export `OPENAI_API_KEY` plus `MOONSHOT_API_KEY`. Worker model instances are independent but share endpoint-level rate limits. The Kimi example uses the currently documented `kimi-k3.1-pro` identifier and `reasoning_effort: high`.
+
+
+Fields include `provider`, `model`, `base_url`, `api_key_env`, `parameters`, `capabilities`, `retry`, `timeout`, `rate_limit`, `pricing`, `estimation`, and provider-specific options. Real provider runs require per-million-token prices and `estimation.max_input_tokens`; prices are snapshotted and confirmed cost remains separate from reserved estimates. Secrets are environment-variable names or secret-store references, never inline values. `base_url_env` optionally overrides a model endpoint for container networks without putting credentials in YAML. Provider adapters declare accepted parameter names; an unsupported configured parameter is an error rather than silently ignored.
 
 Do not infer capabilities from a model name. Validate them against official provider documentation and explicit configuration. `max_output_tokens` maps to the adapter's supported request field. Reasoning effort and temperature are omitted unless both configured and supported.
 

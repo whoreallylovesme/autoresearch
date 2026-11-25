@@ -18,6 +18,7 @@ make local-model-demo
 make web-lint
 make web-test
 make browser-test
+make compose-test
 ```
 
 The canonical CI workflow runs `go vet`, `go test -race -shuffle=on ./...`, integration tests, Python Ruff checks, and pytest when those components exist.
@@ -36,6 +37,7 @@ The canonical CI workflow runs `go vet`, `go test -race -shuffle=on ./...`, inte
 - Artifact checksums and immutable result history.
 - API contracts and Python control-center behavior.
 - Headless Chromium acceptance for live events, graph, Plotly, experiments, fleet links, and persistent chat.
+- Docker Compose config/build/start smoke and an actual research run through the published API.
 
 ## Integration recovery test
 
