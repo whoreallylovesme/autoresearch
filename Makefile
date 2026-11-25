@@ -1,6 +1,7 @@
 GO ?= go
+UV ?= uv
 
-.PHONY: fmt fmt-check lint test test-integration run-demo literature-demo experiment-demo control-center browser-test full-research-demo local-model-demo web-setup web-lint web-test validate
+.PHONY: fmt fmt-check lint test test-integration run-demo literature-demo experiment-demo control-center compose-test browser-test full-research-demo local-model-demo web-setup web-lint web-test validate
 
 fmt:
 	$(GO) fmt ./...
@@ -30,14 +31,13 @@ experiment-demo:
 	bash scripts/demo.sh configs/experiment.yaml
 
 web-setup:
-	python3 -m venv .venv
-	./.venv/bin/python -m pip install -q -r web/requirements.txt -r web/requirements-dev.txt
+	cd web && $(UV) sync --frozen
 
 web-lint: web-setup
-	cd web && ../.venv/bin/ruff check . && ../.venv/bin/ruff format --check .
+	cd web && $(UV) run --frozen ruff check . && $(UV) run --frozen ruff format --check .
 
 web-test: web-setup
-	cd web && ../.venv/bin/pytest -q
+	cd web && $(UV) run --frozen pytest -q
 
 control-center:
 	bash scripts/control-center.sh
@@ -50,3 +50,6 @@ local-model-demo:
 
 full-research-demo:
 	bash scripts/demo.sh configs/full-research.yaml
+
+compose-test:
+	bash scripts/compose-smoke.sh
