@@ -10,12 +10,19 @@ The reviewed Compose deployment builds a multi-stage Go/Python image and starts 
 
 ### Optional native Kimi profile
 
-The `kimi-web` profile adds the pinned official Kimi Code 2.8.0 server, a one-shot volume-permission initializer, and a non-root token relay. Only the server token crosses into `researchd`, through a read-only volume; the Kimi home directory and OAuth credentials remain in the server volume. Long-running native services have no Linux capabilities. The one-shot initializer recursively migrates ownership only inside the dedicated native home/session volumes so existing root-owned files remain readable after the move to UID `65532`. Native model prompts are never submitted by deployment or smoke tests.
+The `kimi-web` profile adds the pinned official Kimi Code 2.8.0 server, a one-shot volume-permission initializer, and a non-root token relay. Only the server token crosses into `researchd`, through a read-only volume; the Kimi home directory and OAuth credentials remain in the server volume. Long-running native services have no Linux capabilities. The one-shot initializer recursively migrates ownership only inside the dedicated native home/session volumes so existing root-owned files remain readable after the move to UID `65532`; a legacy `server.token` is also tightened to mode `0600` before the native server starts. Native model prompts are never submitted by deployment or smoke tests.
 
 ```bash
 export AUTORESEARCH_CONFIG=configs/kimi-web-demo.yaml
 docker compose -f deploy/docker-compose.yml -f deploy/kimi-web.compose.yml --profile kimi-web up -d --build
 docker compose -f deploy/docker-compose.yml -f deploy/kimi-web.compose.yml --profile kimi-web exec -it kimi-web kimi login
+```
+
+When upgrading an existing native profile, run the one-shot migration explicitly before bringing up the rest of the stack; Compose may otherwise keep the previously completed init container:
+
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/kimi-web.compose.yml --profile kimi-web up -d --build --force-recreate --no-deps kimi-web-init
+docker compose -f deploy/docker-compose.yml -f deploy/kimi-web.compose.yml --profile kimi-web up -d --build
 ```
 
 OAuth is an explicit interactive operator action. It is distinct from `MOONSHOT_API_KEY` used by `provider: kimi`. Inspect the authenticated live `/api/v1/models`, `/openapi.json`, and `/asyncapi.json` when selecting model capabilities; KAP is experimental and versioned independently of this project. The default `configs/kimi-web-demo.yaml` uses a mock Chief and native workers, so `researchctl run` can consume subscription-backed generation. Use the mixed-fleet example only after configuring the real Chief and budget.

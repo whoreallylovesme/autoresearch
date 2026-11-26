@@ -15,7 +15,7 @@ trap cleanup EXIT INT TERM
 cleanup
 "${compose[@]}" config >/dev/null
 docker volume create   --label "com.docker.compose.project=${COMPOSE_PROJECT_NAME}"   --label "com.docker.compose.volume=kimi-code-home"   "${COMPOSE_PROJECT_NAME}_kimi-code-home" >/dev/null
-docker run --rm --user 0:0 -v "${COMPOSE_PROJECT_NAME}_kimi-code-home:/tmp/kimi-code" --entrypoint sh   node@sha256:7c400d78797d8cbe3f6bb21d2227b86af4cd24b0014cc9f62ff989cc16de988e   -c 'mkdir -m 0700 -p /tmp/kimi-code/legacy && printf legacy-marker > /tmp/kimi-code/legacy/private-marker && chmod 0600 /tmp/kimi-code/legacy/private-marker'
+docker run --rm --user 0:0 -v "${COMPOSE_PROJECT_NAME}_kimi-code-home:/tmp/kimi-code" --entrypoint sh   node@sha256:7c400d78797d8cbe3f6bb21d2227b86af4cd24b0014cc9f62ff989cc16de988e   -c 'mkdir -m 0700 -p /tmp/kimi-code/legacy && printf legacy-marker > /tmp/kimi-code/legacy/private-marker && chmod 0600 /tmp/kimi-code/legacy/private-marker && printf legacy-native-token > /tmp/kimi-code/server.token && chmod 0644 /tmp/kimi-code/server.token'
 "${compose[@]}" up -d --build kimi-token-relay
 for _ in $(seq 1 120); do
   if curl -fsS http://127.0.0.1:${KIMI_WEB_PORT}/api/v1/healthz >/dev/null 2>&1 && "${compose[@]}" exec -T kimi-token-relay test -r /run/kimi-web/server.token >/dev/null 2>&1; then

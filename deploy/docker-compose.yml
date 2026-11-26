@@ -27,7 +27,7 @@ services:
       dockerfile: deploy/kimi-web.Dockerfile
     user: "0:0"
     entrypoint: ["sh", "-c"]
-    command: ["chown -R 65532:65532 /tmp/kimi-code /srv/autoresearch-private/kimi-sessions && chown 65532:65532 /run/kimi-web && chmod 0700 /tmp/kimi-code /run/kimi-web /srv/autoresearch-private/kimi-sessions"]
+    command: ["chown -R 65532:65532 /tmp/kimi-code /srv/autoresearch-private/kimi-sessions && chown 65532:65532 /run/kimi-web && chmod 0700 /tmp/kimi-code /run/kimi-web /srv/autoresearch-private/kimi-sessions && if [ -f /tmp/kimi-code/server.token ]; then chmod 0600 /tmp/kimi-code/server.token; fi"]
     restart: "no"
     volumes:
       - kimi-code-home:/tmp/kimi-code
