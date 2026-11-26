@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-11-25
+Last updated: 2026-11-26
 
 ## Current status
 
@@ -27,7 +27,7 @@ All six roadmap milestones are complete and verified on the remote VPS.
 - Event-sequence playback with play/pause/seek/speed and projected task, hypothesis, experiment, and conclusion state.
 - Qwen2.5 0.5B GGUF on llama.cpp with pinned image/model hashes. `HFMockProvider` uses deterministic tool plans and bounded local narration; fabricated/source-like narration is rejected in favor of a safe fallback.
 - Hierarchical context compaction, shared provider endpoint rate limiting, Prometheus metrics, W3C `traceparent`, and standalone `researchctl init` scaffolding.
-- systemd templates for runtime, UI, and llama.cpp; browser and local-model acceptance scripts.
+- systemd templates for runtime, UI, and llama.cpp; browser and local-model acceptance scripts. Python dependencies are locked and installed with `uv sync --frozen` from `web/pyproject.toml` and `web/uv.lock`.
 
 ## Verification evidence
 
@@ -47,6 +47,20 @@ The full research test proves two cited papers, proposed and verified hypotheses
 - Optional Slurm and additional literature sources.
 - Official external agent backends after protocol-specific validation.
 - Richer distributed trace spans and optional vector retrieval when justified by measured needs.
+
+## Provider integration update
+
+A dedicated Kimi/Moonshot adapter and a mixed OpenAI-Chief/Kimi-worker configuration are implemented with fake-endpoint integration tests. The Python environment now uses `uv` and a committed lockfile. CLI parsing uses Cobra, and a multi-stage Docker Compose deployment builds and starts llama.cpp, runtime, and UI without a host Docker socket. No paid Kimi or OpenAI calls have been made.
+
+## Native Kimi Code integration
+
+The `kimi-web` provider uses the official Kimi Code 2.8.0 KAP HTTP API, discovered from the running server's `/openapi.json` and `/api/v1/kap.md`. It creates a distinct native session and workspace per agent, sends incremental runtime messages, correlates replies with `prompt_id`, waits and cancels through official session actions, and exposes runtime tools through a strict JSON envelope. Native built-in approvals/questions are rejected rather than auto-approved. `permission_mode: manual` is currently mandatory because native `auto`/`yolo` would share the service OS identity.
+
+Hosted Moonshot (`provider: kimi`) and native Kimi Code (`provider: kimi-web`) remain separate authentication paths. Native subscription workers use request quotas and zero reported monetary/token usage rather than invented prices; no subscription metering is inferred. The optional Compose profile runs Kimi without Linux capabilities and relays only the private server token to the daemon. OAuth files stay in the native service volume.
+
+Verification includes fake-KAP mixed-fleet execution with an OpenAI Chief and three independent native worker sessions, race-tested cancellation/retry/protocol tests, and `make native-kimi-test` against real `kimi web` in Docker. The latter validates configuration, starts the native-configured daemon and fleet API, checks non-root execution and token permissions, and creates two distinct real session IDs/workspaces without starting research or submitting prompts. Interactive OAuth and live subscription-backed generation have not been performed. Full mixed-fleet generation therefore still requires an explicit operator run after login, live model discovery, and budget configuration.
+
+Contributor handoff rules are in `AGENTS.md`; the CLI uses Cobra, the UI uses `uv`, and both default and native Compose smoke scripts are available.
 
 ## Handoff
 

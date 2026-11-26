@@ -1,0 +1,5 @@
+services:
+  researchd:
+    depends_on:
+      kimi-token-relay:
+        condition: service_healthy

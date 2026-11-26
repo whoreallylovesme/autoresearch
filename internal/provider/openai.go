@@ -295,6 +295,25 @@ func (p *OpenAIProvider) requestBody(request Request, stream bool) ([]byte, erro
 			} else {
 				body["max_tokens"] = value
 			}
+		case "reasoning_effort":
+			levels := p.capabilities.ReasoningEfforts
+			if p.provider == "kimi" && len(levels) == 0 {
+				levels = []string{"low", "high", "max"}
+			}
+			level, ok := value.(string)
+			if !ok || (len(levels) > 0 && !slices.Contains(levels, level)) {
+				return nil, &Error{Kind: ErrorPermanent, Err: fmt.Errorf("unsupported reasoning_effort %v", value)}
+			}
+			body[name] = value
+		case "response_format":
+			format, ok := value.(string)
+			if !ok || (format != "text" && format != "json_object") {
+				return nil, &Error{Kind: ErrorPermanent, Err: errors.New("response_format must be text or json_object")}
+			}
+			if format == "json_object" && !p.capabilities.StructuredOutputs {
+				return nil, &Error{Kind: ErrorPermanent, Err: errors.New("structured output is not supported")}
+			}
+			body["response_format"] = map[string]string{"type": format}
 		default:
 			body[name] = value
 		}
@@ -395,7 +414,8 @@ type wireUsage struct {
 	PromptTokens        int64 `json:"prompt_tokens"`
 	CompletionTokens    int64 `json:"completion_tokens"`
 	PromptTokensDetails struct {
-		CachedTokens int64 `json:"cached_tokens"`
+		CachedTokens     int64 `json:"cached_tokens"`
+		CacheWriteTokens int64 `json:"cache_write_tokens"`
 	} `json:"prompt_tokens_details"`
 	CompletionTokensDetails struct {
 		ReasoningTokens int64 `json:"reasoning_tokens"`
@@ -418,5 +438,5 @@ func responseFromWire(id, model string, message wireMessage, finish string, usag
 }
 
 func usageFromWire(usage wireUsage) Usage {
-	return Usage{InputTokens: usage.PromptTokens, OutputTokens: usage.CompletionTokens, CachedTokens: usage.PromptTokensDetails.CachedTokens, ReasoningTokens: usage.CompletionTokensDetails.ReasoningTokens}
+	return Usage{InputTokens: usage.PromptTokens, OutputTokens: usage.CompletionTokens, CachedTokens: usage.PromptTokensDetails.CachedTokens, CacheWriteTokens: usage.PromptTokensDetails.CacheWriteTokens, ReasoningTokens: usage.CompletionTokensDetails.ReasoningTokens}
 }

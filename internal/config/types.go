@@ -66,19 +66,23 @@ type Permissions struct {
 }
 
 type ModelConfig struct {
-	Version      int
-	Provider     string
-	Model        string
-	APIKeyEnv    string `yaml:"api_key_env"`
-	BaseURL      string `yaml:"base_url"`
-	Parameters   map[string]any
-	Capabilities Capabilities
-	Retry        RetryConfig
-	Timeout      Duration
-	RateLimit    RateLimitConfig  `yaml:"rate_limit"`
-	Pricing      *PricingConfig   `yaml:"pricing"`
-	Estimation   EstimationConfig `yaml:"estimation"`
-	SourcePath   string           `yaml:"-"`
+	Version          int
+	Provider         string
+	Model            string
+	APIKeyEnv        string `yaml:"api_key_env"`
+	BaseURL          string `yaml:"base_url"`
+	BaseURLEnv       string `yaml:"base_url_env"`
+	TokenFile        string `yaml:"token_file"`
+	SessionWorkspace string `yaml:"session_workspace"`
+	SessionProfile   string `yaml:"session_profile"`
+	Parameters       map[string]any
+	Capabilities     Capabilities
+	Retry            RetryConfig
+	Timeout          Duration
+	RateLimit        RateLimitConfig  `yaml:"rate_limit"`
+	Pricing          *PricingConfig   `yaml:"pricing"`
+	Estimation       EstimationConfig `yaml:"estimation"`
+	SourcePath       string           `yaml:"-"`
 }
 
 type Capabilities struct {

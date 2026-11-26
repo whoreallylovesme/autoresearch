@@ -8,7 +8,14 @@ Configuration is YAML, versioned, strictly decoded, resolved relative to the ref
 
 ## Model contract
 
-Fields include `provider`, `model`, `base_url`, `api_key_env`, `parameters`, `capabilities`, `retry`, `timeout`, `rate_limit`, `pricing`, `estimation`, and provider-specific options. Real provider runs require per-million-token prices and `estimation.max_input_tokens`; prices are snapshotted and confirmed cost remains separate from reserved estimates. Secrets are environment-variable names or secret-store references, never inline values. Provider adapters declare accepted parameter names; an unsupported configured parameter is an error rather than silently ignored.
+For a mixed OpenAI-Chief/Kimi-worker fleet, copy `configs/mixed-providers.example.yaml`, set the actual Astra model identifier and current prices, and export `OPENAI_API_KEY` plus `MOONSHOT_API_KEY`. Worker model instances are independent but share endpoint-level rate limits. The Kimi example uses the currently documented `kimi-k3.1-pro` identifier and `reasoning_effort: high`.
+
+
+Fields include `provider`, `model`, `base_url`, `api_key_env`, `parameters`, `capabilities`, `retry`, `timeout`, `rate_limit`, `pricing`, `estimation`, and provider-specific options. Hosted real provider runs require per-million-token prices and `estimation.max_input_tokens`; prices are snapshotted and confirmed cost remains separate from reserved estimates. Secrets are environment-variable names or secret-store references, never inline values. `base_url_env` optionally overrides a model endpoint for container networks without putting credentials in YAML. Provider adapters declare accepted parameter names; an unsupported configured parameter is an error rather than silently ignored.
+
+For native Kimi Code, use `provider: kimi-web` as shown in `configs/models/kimi-web.example.yaml`. `base_url_env` selects the local server, `token_file` identifies its owner-only bearer-token file, and `session_workspace` is the shared filesystem root under which the runtime creates a separate directory for each agent. `session_profile` is optional. Supported parameters are `reasoning_effort`, `permission_mode`, and `disabled_tools`; validate model identifiers and reasoning levels against the live server's `/api/v1/models`. Only `permission_mode: manual` is currently accepted for native built-in tools. The runtime's textual tool protocol is separate from those built-in tools and remains autonomous. A personal subscription is not per-token billing: do not configure `pricing`; use provider request quotas and endpoint rate limits instead. Monetary expenditure and token totals are unknown unless the provider reports them.
+
+`configs/kimi-web-demo.yaml` combines a scripted mock Chief with native workers for an explicitly initiated subscription-backed run. `configs/kimi-web-fleet.example.yaml` is the OpenAI-Chief/native-Kimi-worker template; its placeholder Chief model and real-provider prices must be configured before use. `make native-kimi-test` is the credential-free transport test and never submits prompts.
 
 Do not infer capabilities from a model name. Validate them against official provider documentation and explicit configuration. `max_output_tokens` maps to the adapter's supported request field. Reasoning effort and temperature are omitted unless both configured and supported.
 
@@ -22,7 +29,7 @@ Tasks reference objective, completion criteria, restrictions, deliverables, and 
 
 ## Budget contract
 
-Monetary, token, request, runtime, parallelism, disk, CPU, and GPU dimensions are independent. Soft, hard, and finalization reserves must be non-negative and ordered. Zero-cost mock runs may use zero monetary limits while retaining request limits.
+Monetary, token, request, runtime, parallelism, disk, CPU, and GPU dimensions are independent. Soft, hard, and finalization reserves must be non-negative and ordered. Zero-cost mock runs may use zero monetary limits while retaining request limits. Native subscription workers use request quotas, not fabricated token prices; `configs/kimi-web-budget.yaml` provides an illustrative bounded quota.
 
 ## Snapshots
 

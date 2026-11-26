@@ -4,6 +4,33 @@
 
 The reference target is a Linux VPS with 8 vCPU, 32 GB RAM, NVMe storage, no local GPU, systemd, and optional Docker. Remote SSH/Slurm resources are opt-in. No real hostnames, addresses, credentials, or private research paths belong in this repository.
 
+## Docker Compose
+
+The reviewed Compose deployment builds a multi-stage Go/Python image and starts llama.cpp, `researchd`, and NiceGUI without mounting the host Docker socket. Run `docker compose -f deploy/docker-compose.yml up --build`. The UI is published at `http://127.0.0.1:8081`, the API at `127.0.0.1:8080`, and local inference at `127.0.0.1:8082`; all host bindings remain loopback-only. Use `AUTORESEARCH_MODEL_DIR` to select the external model directory and `docker compose -f deploy/docker-compose.yml down` to stop services. The default config avoids Docker-in-Docker execution; run experimental executors on the host or configure a separate rootless executor explicitly.
+
+### Optional native Kimi profile
+
+The `kimi-web` profile adds the pinned official Kimi Code 2.8.0 server, a one-shot volume-permission initializer, and a non-root token relay. Only the server token crosses into `researchd`, through a read-only volume; the Kimi home directory and OAuth credentials remain in the server volume. Long-running native services have no Linux capabilities. The one-shot initializer recursively migrates ownership only inside the dedicated native home/session volumes so existing root-owned files remain readable after the move to UID `65532`; a legacy `server.token` is also tightened to mode `0600` before the native server starts. Native model prompts are never submitted by deployment or smoke tests.
+
+```bash
+export AUTORESEARCH_CONFIG=configs/kimi-web-demo.yaml
+docker compose -f deploy/docker-compose.yml -f deploy/kimi-web.compose.yml --profile kimi-web up -d --build
+docker compose -f deploy/docker-compose.yml -f deploy/kimi-web.compose.yml --profile kimi-web exec -it kimi-web kimi login
+```
+
+When upgrading an existing native profile, run the one-shot migration explicitly before bringing up the rest of the stack; Compose may otherwise keep the previously completed init container:
+
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/kimi-web.compose.yml --profile kimi-web up -d --build --force-recreate --no-deps kimi-web-init
+docker compose -f deploy/docker-compose.yml -f deploy/kimi-web.compose.yml --profile kimi-web up -d --build
+```
+
+OAuth is an explicit interactive operator action. It is distinct from `MOONSHOT_API_KEY` used by `provider: kimi`. Inspect the authenticated live `/api/v1/models`, `/openapi.json`, and `/asyncapi.json` when selecting model capabilities; KAP is experimental and versioned independently of this project. The default `configs/kimi-web-demo.yaml` uses a mock Chief and native workers, so `researchctl run` can consume subscription-backed generation. Use the mixed-fleet example only after configuring the real Chief and budget.
+
+The native server listens on the Compose network and a loopback host port, by default `127.0.0.1:58627`. `--allowed-host kimi-web` permits only that additional internal Host header, and bearer authentication remains enabled. Server logs are silent by default to avoid accidental token disclosure. Token rotation is relayed atomically, but existing provider instances retain their original token; recreate `researchd` after rotation. Runtime restart recovery starts fresh native sessions while retaining durable runtime state and the old sessions in Kimi's private history.
+
+`make native-kimi-test` uses an isolated Compose project, checks non-root execution and token mode `0400`, validates and starts a native-configured daemon, and creates two real sessions with distinct workspaces. It does not start a research run or send model prompts and removes its test containers and volumes afterwards.
+
 ## Layout
 
 - Source: an operator-selected directory such as `/opt/autoresearch`.
@@ -18,11 +45,12 @@ The reference target is a Linux VPS with 8 vCPU, 32 GB RAM, NVMe storage, no loc
 ```bash
 go build -o bin/researchd ./cmd/researchd
 go build -o bin/researchctl ./cmd/researchctl
+uv sync --frozen --project web
 researchctl validate --config configs/autoresearch.yaml
 researchd --config configs/autoresearch.yaml --data-dir /srv/autoresearch-private
 ```
 
-Use a dedicated unprivileged service account for production. Run `make literature-demo` and `make experiment-demo` for the scientific acceptance scenarios. Run `make control-center` to build and start both `researchd` on `127.0.0.1:8080` and NiceGUI on `127.0.0.1:8081`, then execute the configured research run. `make browser-test` performs the Chromium acceptance suite. `deploy/` contains service templates once daemon behavior is implemented; rendered secret-bearing unit files are not committed.
+Use a dedicated unprivileged service account for production. Run `make literature-demo` and `make experiment-demo` for the scientific acceptance scenarios. Run `make control-center` to build and start both `researchd` on `127.0.0.1:8080` and NiceGUI on `127.0.0.1:8081`, then execute the configured research run. `make browser-test` performs the Chromium acceptance suite. `deploy/` contains service templates; rendered secret-bearing unit files are not committed.
 
 ## Local Hugging Face inference
 

@@ -29,3 +29,8 @@ All notable changes are documented here. The project follows Semantic Versioning
 - Local Qwen/llama.cpp HFMock provider with bounded, citation-safe narration and live autonomous run.
 - Hierarchical context compaction, shared provider rate limits, Prometheus metrics, and W3C trace context.
 - CLI project initialization and deterministic operator directives.
+- Dedicated Kimi/Moonshot provider with reasoning and JSON mode, plus an OpenAI-Chief/Kimi-worker fleet example and integration test.
+- Reproducible Python dependency management with `pyproject.toml`, `uv.lock`, and `uv sync --frozen`.
+- Cobra-based daemon/operator CLI and multi-stage Docker Compose deployment for llama.cpp, runtime, and UI.
+- Native Kimi Code `kimi web` workers with per-agent KAP sessions/workspaces, incremental history, deterministic runtime tool envelopes, cancellation, and request-only subscription accounting.
+- Optional non-root native Kimi Compose profile with an isolated token relay, live session-isolation smoke test, and contributor `AGENTS.md` guidance.

@@ -36,23 +36,18 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        if: hashFiles('web/requirements.txt') != ''
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.12"
-          cache: pip
+          enable-cache: true
+          cache-dependency-glob: web/uv.lock
       - name: Install
-        if: hashFiles('web/requirements.txt') != ''
-        run: pip install -r requirements.txt -r requirements-dev.txt
+        run: uv sync --frozen
       - name: Lint
-        if: hashFiles('web/requirements.txt') != ''
-        run: ruff check .
+        run: uv run --frozen ruff check .
       - name: Check formatting
-        if: hashFiles('web/requirements.txt') != ''
-        run: ruff format --check .
+        run: uv run --frozen ruff format --check .
       - name: Test
-        if: hashFiles('web/requirements.txt') != ''
-        run: pytest -q
+        run: uv run --frozen pytest -q
   repository:
     runs-on: ubuntu-latest
     steps:
@@ -74,18 +69,32 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24"
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.12"
-          cache: pip
+          enable-cache: true
+          cache-dependency-glob: web/uv.lock
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: web/package-lock.json
       - name: Install Python dependencies
-        run: pip install -r web/requirements.txt -r web/requirements-dev.txt
+        run: uv sync --frozen --project web
       - name: Install browser dependencies
         run: npm ci --prefix web
       - name: Browser acceptance
         run: make browser-test
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker Compose acceptance
+        run: make compose-test
+
+  native-kimi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native Kimi transport and session isolation
+        run: make native-kimi-test

@@ -8,7 +8,7 @@ WorkingDirectory=/opt/autoresearch/web
 Environment=AUTORESEARCH_API=http://127.0.0.1:8080/api/v1
 Environment=AUTORESEARCH_UI_HOST=127.0.0.1
 Environment=AUTORESEARCH_UI_PORT=8081
-ExecStart=/opt/autoresearch/.venv/bin/python -m autoresearch_ui.main
+ExecStart=/usr/local/bin/uv run --frozen --no-dev --project /opt/autoresearch/web python -m autoresearch_ui.main
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true

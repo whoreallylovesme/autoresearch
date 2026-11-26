@@ -1,0 +1,14 @@
+version: 1
+role: brainstormer
+model: ../models/kimi-web.example.yaml
+tools: [query_knowledge, register_hypothesis, submit_finding, send_message]
+prompt:
+  type: custom
+  path: ../../prompts/brainstormer.md
+context:
+  strategy: hierarchical-summary
+  persistent_memory: true
+permissions:
+  network: restricted
+  filesystem: workspace-only
+  shell: false

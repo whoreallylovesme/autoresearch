@@ -19,7 +19,7 @@ trap cleanup EXIT INT TERM
 daemon_pid=$!
 (
   cd web
-  AUTORESEARCH_API=http://127.0.0.1:18080/api/v1 AUTORESEARCH_UI_PORT=18081 ../.venv/bin/python -m autoresearch_ui.main
+  AUTORESEARCH_API=http://127.0.0.1:18080/api/v1 AUTORESEARCH_UI_PORT=18081 uv run --frozen --project . python -m autoresearch_ui.main
 ) &
 ui_pid=$!
 for _ in $(seq 1 100); do

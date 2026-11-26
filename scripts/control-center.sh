@@ -5,10 +5,7 @@ config_path=${1:-configs/experiment.yaml}
 mkdir -p bin
 go build -o bin/researchd ./cmd/researchd
 go build -o bin/researchctl ./cmd/researchctl
-if [ ! -d .venv ]; then
-  python3 -m venv .venv
-fi
-./.venv/bin/python -m pip install -q -r web/requirements.txt -r web/requirements-dev.txt
+uv sync --frozen --project web
 data_dir=$(mktemp -d)
 cleanup() {
   kill "${daemon_pid:-}" "${ui_pid:-}" 2>/dev/null || true
@@ -20,7 +17,7 @@ trap cleanup EXIT INT TERM
 daemon_pid=$!
 (
   cd web
-  ../.venv/bin/python -m autoresearch_ui.main
+  uv run --frozen --project . python -m autoresearch_ui.main
 ) &
 ui_pid=$!
 for _ in $(seq 1 100); do

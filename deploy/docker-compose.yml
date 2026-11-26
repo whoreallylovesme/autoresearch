@@ -1,0 +1,167 @@
+services:
+  llama:
+    image: ghcr.io/ggml-org/llama.cpp@sha256:b0cd5490eefff30b40dcd47f7249a7d7211136908f73fe440a2a86b35a22b23b
+    restart: unless-stopped
+    command: ["-m", "/models/qwen2.5-0.5b-instruct-q4_k_m.gguf", "--host", "0.0.0.0", "--port", "8080", "--threads", "4", "--ctx-size", "8192", "--parallel", "2"]
+    volumes:
+      - ${AUTORESEARCH_MODEL_DIR:-/opt/models}:/models:ro
+    ports:
+      - "127.0.0.1:${AUTORESEARCH_MODEL_PORT:-8082}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  kimi-web-init:
+    profiles: ["kimi-web"]
+    build:
+      context: ..
+      dockerfile: deploy/kimi-web.Dockerfile
+    user: "0:0"
+    entrypoint: ["sh", "-c"]
+    command: ["chown -R 65532:65532 /tmp/kimi-code /srv/autoresearch-private/kimi-sessions && chown 65532:65532 /run/kimi-web && chmod 0700 /tmp/kimi-code /run/kimi-web /srv/autoresearch-private/kimi-sessions && if [ -f /tmp/kimi-code/server.token ]; then chmod 0600 /tmp/kimi-code/server.token; fi"]
+    restart: "no"
+    volumes:
+      - kimi-code-home:/tmp/kimi-code
+      - kimi-web-token:/run/kimi-web
+      - kimi-sessions:/srv/autoresearch-private/kimi-sessions
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+
+  kimi-web:
+    profiles: ["kimi-web"]
+    build:
+      context: ..
+      dockerfile: deploy/kimi-web.Dockerfile
+    restart: unless-stopped
+    command: ["web", "--no-open", "--host", "0.0.0.0", "--port", "58627", "--allowed-host", "kimi-web", "--log-level", "silent"]
+    volumes:
+      - kimi-code-home:/tmp/kimi-code
+      - kimi-sessions:/srv/autoresearch-private/kimi-sessions
+    ports:
+      - "127.0.0.1:${KIMI_WEB_PORT:-58627}:58627"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m,uid=65532,gid=65532,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      kimi-web-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:58627/api/v1/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  kimi-token-relay:
+    profiles: ["kimi-web"]
+    build:
+      context: ..
+      dockerfile: deploy/kimi-web.Dockerfile
+    restart: unless-stopped
+    entrypoint: ["/usr/local/bin/autoresearch-kimi-token-relay"]
+    environment:
+      AUTORESEARCH_KIMI_TOKEN_DIR: /run/kimi-web
+    volumes:
+      - kimi-code-home:/tmp/kimi-code:ro
+      - kimi-web-token:/run/kimi-web
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,uid=65532,gid=65532,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      kimi-web:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "test -r /run/kimi-web/server.token && test \"$(stat -c %a /run/kimi-web/server.token)\" = 400"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  researchd:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["./bin/researchd", "--config", "${AUTORESEARCH_CONFIG:-configs/local-hf.yaml}", "--listen", "0.0.0.0:8080", "--allow-non-loopback", "--data-dir", "/var/lib/autoresearch"]
+    environment:
+      AUTORESEARCH_MODEL_BASE_URL: http://llama:8080/v1
+      KIMI_WEB_BASE_URL: http://kimi-web:58627
+      KIMI_WEB_TOKEN_FILE: /run/kimi-web/server.token
+    volumes:
+      - autoresearch-data:/var/lib/autoresearch
+      - kimi-web-token:/run/kimi-web:ro
+      - kimi-sessions:/srv/autoresearch-private/kimi-sessions
+    ports:
+      - "127.0.0.1:${AUTORESEARCH_API_PORT:-8080}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      llama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/run/status"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  ui:
+    working_dir: /opt/autoresearch/web
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["uv", "run", "--frozen", "--no-dev", "--project", ".", "python", "-m", "autoresearch_ui.main"]
+    environment:
+      AUTORESEARCH_API: http://researchd:8080/api/v1
+      AUTORESEARCH_UI_HOST: 0.0.0.0
+      AUTORESEARCH_UI_PORT: 8081
+    ports:
+      - "127.0.0.1:${AUTORESEARCH_UI_PORT:-8081}:8081"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      researchd:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  autoresearch-data:
+  kimi-code-home:
+  kimi-web-token:
+  kimi-sessions:

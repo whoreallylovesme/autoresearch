@@ -1,0 +1,14 @@
+version: 1
+role: developer
+model: ../models/kimi.example.yaml
+prompt:
+  type: custom
+  path: ../../prompts/developer.md
+tools: [read_workspace, write_workspace, run_test, inspect_artifact, submit_finding, send_message]
+context:
+  strategy: hierarchical-summary
+  persistent_memory: true
+permissions:
+  network: none
+  filesystem: workspace-only
+  shell: sandboxed

@@ -1,0 +1,26 @@
+version: 1
+name: openai-chief-native-kimi-fleet
+
+chief:
+  config: agents/openai-chief.example.yaml
+workers:
+  - config: agents/kimi-web-baby-scientist.yaml
+    headcount: 2
+  - config: agents/kimi-web-developer.yaml
+    headcount: 1
+  - config: agents/kimi-web-critic.yaml
+    headcount: 1
+  - config: agents/kimi-web-brainstormer.yaml
+    headcount: 1
+
+task: tasks/demo.yaml
+budget: kimi-web-budget.yaml
+executors: executors.yaml
+
+runtime:
+  autonomous: true
+  max_parallel_tasks: 4
+  checkpoint_interval: 10s
+  resume_on_restart: true
+  data_dir: ./data/native-kimi-fleet
+  listen: 127.0.0.1:8080
