@@ -2,8 +2,6 @@ package research
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +11,7 @@ import (
 	"github.com/whoreallylovesme/autoresearch/internal/artifact"
 	"github.com/whoreallylovesme/autoresearch/internal/budget"
 	"github.com/whoreallylovesme/autoresearch/internal/config"
+	"github.com/whoreallylovesme/autoresearch/internal/id"
 	"github.com/whoreallylovesme/autoresearch/internal/messaging"
 	"github.com/whoreallylovesme/autoresearch/internal/scheduler"
 	"github.com/whoreallylovesme/autoresearch/internal/storage"
@@ -132,11 +131,8 @@ func (r *Runtime) newEventLocked(eventType, actor, taskID string, payload any) E
 	if payload == nil {
 		encoded = json.RawMessage(`{}`)
 	}
-	idBytes := make([]byte, 16)
-	if _, err := rand.Read(idBytes); err != nil {
-		panic(err)
-	}
-	event := Event{ID: hex.EncodeToString(idBytes), RunID: r.status.ID, Sequence: uint64(len(r.events) + 1), Type: eventType, SchemaVersion: 1, Timestamp: time.Now().UTC(), Actor: actor, TaskID: taskID, Payload: encoded}
+	eventID := id.MustNew()
+	event := Event{ID: eventID, RunID: r.status.ID, Sequence: uint64(len(r.events) + 1), Type: eventType, SchemaVersion: 1, Timestamp: time.Now().UTC(), Actor: actor, TaskID: taskID, Payload: encoded}
 	r.events = append(r.events, event)
 	return event
 }

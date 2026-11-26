@@ -1,12 +1,12 @@
 package messaging
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strings"
 	"time"
+
+	"github.com/whoreallylovesme/autoresearch/internal/id"
 )
 
 type Type string
@@ -38,17 +38,17 @@ type Message struct {
 }
 
 func New(runID, sender, recipient string, messageType Type, payload json.RawMessage) (Message, error) {
-	id, err := randomID()
+	messageID, err := id.New()
 	if err != nil {
 		return Message{}, err
 	}
-	correlationID, err := randomID()
+	correlationID, err := id.New()
 	if err != nil {
 		return Message{}, err
 	}
 	message := Message{
-		ID: id, RunID: runID, Sender: sender, Recipient: recipient, Timestamp: time.Now().UTC(),
-		Type: messageType, Payload: payload, CorrelationID: correlationID, IdempotencyKey: id,
+		ID: messageID, RunID: runID, Sender: sender, Recipient: recipient, Timestamp: time.Now().UTC(),
+		Type: messageType, Payload: payload, CorrelationID: correlationID, IdempotencyKey: messageID,
 	}
 	if err := message.Validate(); err != nil {
 		return Message{}, err
@@ -64,12 +64,4 @@ func (m Message) Validate() error {
 		return errors.New("message payload must be valid JSON")
 	}
 	return nil
-}
-
-func randomID() (string, error) {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
 }

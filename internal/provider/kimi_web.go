@@ -3,8 +3,6 @@ package provider
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/whoreallylovesme/autoresearch/internal/id"
 )
 
 type KimiWebOptions struct {
@@ -209,7 +209,7 @@ func (p *KimiWebProvider) generateOnce(ctx context.Context, request Request) (Re
 	}
 	promptID := request.IdempotencyKey
 	if promptID == "" {
-		promptID = randomKimiWebID()
+		promptID = id.MustNew()
 	}
 	prompt, err := p.nextPrompt(request)
 	if err != nil {
@@ -529,12 +529,4 @@ func cloneKimiWebMessages(messages []Message) []Message {
 		result[index].ToolCalls = append([]ToolCall(nil), messages[index].ToolCalls...)
 	}
 	return result
-}
-
-func randomKimiWebID() string {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(bytes)
 }

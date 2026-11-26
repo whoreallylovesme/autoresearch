@@ -2,7 +2,6 @@ package knowledge
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -12,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/whoreallylovesme/autoresearch/internal/id"
 	"github.com/whoreallylovesme/autoresearch/internal/storage"
 )
 
@@ -127,7 +127,7 @@ func (s *Store) AddClaimRecord(ctx context.Context, claim Claim) (Claim, error) 
 		return Claim{}, errors.New("verified conclusions require verification evidence")
 	}
 	if claim.ID == "" {
-		claim.ID = randomID()
+		claim.ID = id.MustNew()
 	}
 	if claim.CreatedAt.IsZero() {
 		claim.CreatedAt = time.Now().UTC()
@@ -338,14 +338,6 @@ func normalizeArxiv(arxiv string) string {
 	arxiv = strings.ToLower(strings.TrimSpace(arxiv))
 	arxiv = strings.TrimPrefix(arxiv, "arxiv:")
 	return arxiv
-}
-
-func randomID() string {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(bytes)
 }
 
 func (p Paper) String() string {

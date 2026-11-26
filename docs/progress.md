@@ -62,6 +62,10 @@ Verification includes fake-KAP mixed-fleet execution with an OpenAI Chief and th
 
 Contributor handoff rules are in `AGENTS.md`; the CLI uses Cobra, the UI uses `uv`, and both default and native Compose smoke scripts are available.
 
+## Maintenance
+
+Random 128-bit identifiers for messages, research events, native prompts, knowledge claims, and verification records are centralized in `internal/id`. `New` preserves error returns and `MustNew` preserves the existing explicit panic contract. Go package-test placement and the top-level integration-test boundary are documented in `AGENTS.md` and `docs/testing.md`. The refactor passed the full Go race/integration suite, all deterministic research demos, local-model acceptance, and both Compose smoke tests.
+
 ## Handoff
 
 The public repository is `https://github.com/whoreallylovesme/autoresearch`. Development and runtime execution were performed on the remote VPS in `/opt/autoresearch` and sibling milestone worktrees. Private credentials and research data are not committed. Use the README quick start and deployment guide; do not treat small-model narration as scientific evidence.
