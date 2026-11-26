@@ -2,6 +2,8 @@
 
 AutoResearch favors small, tested, end-to-end changes over speculative abstractions.
 
+Independent work may be delegated freely using role-based agents, AgentSwarm, Tower, or larger multi-wave workflows. There is no project-specific headcount or workflow-size limit; platform and security boundaries still apply. See `docs/multi-agent-development.md` for partitioning, integration, and verification conventions.
+
 1. Read `docs/architecture.md`, relevant ADRs, and `docs/progress.md`.
 2. Keep development and test execution on the designated development machine.
 3. Write a failing test for new behavior, then implement the smallest coherent change.
