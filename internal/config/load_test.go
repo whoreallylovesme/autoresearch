@@ -205,3 +205,55 @@ func TestLoadResolvesModelBaseURLEnv(t *testing.T) {
 		t.Fatalf("BaseURL = %q", configuration.Chief.Model.BaseURL)
 	}
 }
+
+func TestLoadNativeKimiWebConfiguration(t *testing.T) {
+	root := copyConfigs(t)
+	replaceInFile(t, filepath.Join(root, "agents", "baby-scientist.yaml"), "../models/mock.yaml", "../models/kimi-web.example.yaml")
+	configuration, err := config.Load(filepath.Join(root, "autoresearch.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, agent := range configuration.Agents {
+		if agent.Role != "baby-scientist" {
+			continue
+		}
+		if agent.Model.Provider != "kimi-web" || agent.Model.TokenFile != "/run/kimi-web/server.token" || agent.Model.SessionWorkspace != "/srv/autoresearch-private/kimi-sessions" {
+			t.Fatalf("native model = %#v", agent.Model)
+		}
+	}
+}
+
+func TestLoadNativeKimiWebRejectsInvalidSecurityConfiguration(t *testing.T) {
+	for name, mutation := range map[string]string{
+		"session_workspace": "session_workspace: /srv/autoresearch-private/kimi-sessions",
+		"permission_mode":   "permission_mode: manual",
+		"pricing":           "timeout: 15m",
+		"capabilities":      "streaming: false",
+		"base_url":          "base_url: http://127.0.0.1:58627",
+		"max_output_tokens": "permission_mode: manual",
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := copyConfigs(t)
+			model := filepath.Join(root, "models", "kimi-web.example.yaml")
+			switch name {
+			case "session_workspace":
+				replaceInFile(t, model, mutation, "session_workspace: relative-workspaces")
+			case "permission_mode":
+				replaceInFile(t, model, mutation, "permission_mode: auto")
+			case "pricing":
+				replaceInFile(t, model, mutation, "pricing:\n  input_usd_per_million: 1\n"+mutation)
+			case "capabilities":
+				replaceInFile(t, model, mutation, "streaming: true")
+			case "base_url":
+				replaceInFile(t, model, mutation, "base_url: http://operator:placeholder@127.0.0.1:58627")
+			case "max_output_tokens":
+				replaceInFile(t, model, mutation, "permission_mode: manual\n  max_output_tokens: 128")
+			}
+			replaceInFile(t, filepath.Join(root, "agents", "baby-scientist.yaml"), "../models/mock.yaml", "../models/kimi-web.example.yaml")
+			_, err := config.Load(filepath.Join(root, "autoresearch.yaml"))
+			if err == nil || !strings.Contains(err.Error(), name) {
+				t.Fatalf("native security validation error = %v", err)
+			}
+		})
+	}
+}

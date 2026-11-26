@@ -77,7 +77,7 @@ func New(configuration *config.Config, factory ProviderFactory) (*Runtime, error
 }
 
 func (r *Runtime) addAgent(id string, configuration config.AgentConfig, factory ProviderFactory) error {
-	if configuration.Model.Provider != "mock" && configuration.Model.Pricing == nil {
+	if configuration.Model.Provider != "mock" && configuration.Model.Provider != "kimi-web" && configuration.Model.Pricing == nil {
 		return fmt.Errorf("agent %s: real providers require pricing configuration", id)
 	}
 	model, err := factory(id, configuration)

@@ -1,7 +1,7 @@
 GO ?= go
 UV ?= uv
 
-.PHONY: fmt fmt-check lint test test-integration run-demo literature-demo experiment-demo control-center compose-test browser-test full-research-demo local-model-demo web-setup web-lint web-test validate
+.PHONY: fmt fmt-check lint test test-integration run-demo literature-demo experiment-demo control-center compose-test browser-test full-research-demo local-model-demo web-setup web-lint web-test validate native-kimi-test
 
 fmt:
 	$(GO) fmt ./...
@@ -53,3 +53,6 @@ full-research-demo:
 
 compose-test:
 	bash scripts/compose-smoke.sh
+
+native-kimi-test:
+	bash scripts/native-kimi-smoke.sh

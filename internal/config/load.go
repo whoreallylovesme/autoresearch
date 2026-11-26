@@ -51,19 +51,22 @@ type agentFile struct {
 }
 
 type modelFile struct {
-	Version      int              `yaml:"version"`
-	Provider     string           `yaml:"provider"`
-	Model        string           `yaml:"model"`
-	APIKeyEnv    string           `yaml:"api_key_env"`
-	BaseURL      string           `yaml:"base_url"`
-	BaseURLEnv   string           `yaml:"base_url_env"`
-	Parameters   map[string]any   `yaml:"parameters"`
-	Capabilities Capabilities     `yaml:"capabilities"`
-	Retry        RetryConfig      `yaml:"retry"`
-	Timeout      Duration         `yaml:"timeout"`
-	RateLimit    RateLimitConfig  `yaml:"rate_limit"`
-	Pricing      *PricingConfig   `yaml:"pricing"`
-	Estimation   EstimationConfig `yaml:"estimation"`
+	Version          int              `yaml:"version"`
+	Provider         string           `yaml:"provider"`
+	Model            string           `yaml:"model"`
+	APIKeyEnv        string           `yaml:"api_key_env"`
+	BaseURL          string           `yaml:"base_url"`
+	BaseURLEnv       string           `yaml:"base_url_env"`
+	TokenFile        string           `yaml:"token_file"`
+	SessionWorkspace string           `yaml:"session_workspace"`
+	SessionProfile   string           `yaml:"session_profile"`
+	Parameters       map[string]any   `yaml:"parameters"`
+	Capabilities     Capabilities     `yaml:"capabilities"`
+	Retry            RetryConfig      `yaml:"retry"`
+	Timeout          Duration         `yaml:"timeout"`
+	RateLimit        RateLimitConfig  `yaml:"rate_limit"`
+	Pricing          *PricingConfig   `yaml:"pricing"`
+	Estimation       EstimationConfig `yaml:"estimation"`
 }
 
 type taskFile struct {
@@ -210,7 +213,7 @@ func (l *loader) loadModel(path string) (ModelConfig, error) {
 	if err := l.decode(path, &raw); err != nil {
 		return ModelConfig{}, err
 	}
-	model := ModelConfig{Version: raw.Version, Provider: raw.Provider, Model: raw.Model, APIKeyEnv: raw.APIKeyEnv, BaseURL: raw.BaseURL, BaseURLEnv: raw.BaseURLEnv, Parameters: raw.Parameters, Capabilities: raw.Capabilities, Retry: raw.Retry, Timeout: raw.Timeout, RateLimit: raw.RateLimit, Pricing: raw.Pricing, Estimation: raw.Estimation, SourcePath: path}
+	model := ModelConfig{Version: raw.Version, Provider: raw.Provider, Model: raw.Model, APIKeyEnv: raw.APIKeyEnv, BaseURL: raw.BaseURL, BaseURLEnv: raw.BaseURLEnv, TokenFile: raw.TokenFile, SessionWorkspace: raw.SessionWorkspace, SessionProfile: raw.SessionProfile, Parameters: raw.Parameters, Capabilities: raw.Capabilities, Retry: raw.Retry, Timeout: raw.Timeout, RateLimit: raw.RateLimit, Pricing: raw.Pricing, Estimation: raw.Estimation, SourcePath: path}
 	if err := validateModel(&model); err != nil {
 		return ModelConfig{}, fmt.Errorf("%s: %w", path, err)
 	}
@@ -454,6 +457,9 @@ func validateModel(model *ModelConfig) error {
 		model.BaseURL = defaultString(model.BaseURL, "https://api.moonshot.ai/v1")
 	case "openai-compatible", "hf-mock":
 		allowed = append(allowed, "temperature")
+	case "kimi-web":
+		model.BaseURL = defaultString(model.BaseURL, "http://127.0.0.1:58627")
+		allowed = []string{"reasoning_effort", "permission_mode", "disabled_tools"}
 	default:
 		return fmt.Errorf("unsupported provider %q", model.Provider)
 	}
@@ -467,6 +473,27 @@ func validateModel(model *ModelConfig) error {
 		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 			return errors.New("base_url must be a valid HTTP(S) URL")
 		}
+		if model.Provider == "kimi-web" && parsed.User != nil {
+			return errors.New("kimi-web base_url must not embed credentials")
+		}
+	}
+	if model.Provider == "kimi-web" {
+		if model.Capabilities.Streaming || model.Capabilities.StructuredOutputs {
+			return errors.New("kimi-web capabilities cannot enable streaming or generic structured outputs")
+		}
+		for _, name := range model.Capabilities.SupportedParameters {
+			if !slices.Contains(allowed, name) {
+				return fmt.Errorf("unsupported kimi-web capabilities.supported_parameters entry %q", name)
+			}
+		}
+		if !filepath.IsAbs(model.TokenFile) || !filepath.IsAbs(model.SessionWorkspace) {
+			return errors.New("kimi-web requires absolute token_file and session_workspace paths")
+		}
+		if model.Pricing != nil {
+			return errors.New("kimi-web pricing is not supported; use provider request quotas for the subscription")
+		}
+	} else if model.TokenFile != "" || model.SessionWorkspace != "" || model.SessionProfile != "" {
+		return errors.New("token_file, session_workspace, and session_profile are only supported by kimi-web")
 	}
 	if (model.Provider == "openai" || model.Provider == "kimi") && model.APIKeyEnv == "" {
 		return errors.New("api_key_env is required for authenticated providers")
@@ -496,6 +523,21 @@ func validateModel(model *ModelConfig) error {
 			level, ok := value.(string)
 			if !ok || !slices.Contains(model.Capabilities.ReasoningEfforts, level) {
 				return fmt.Errorf("reasoning_effort %q is not declared in capabilities.reasoning_efforts", value)
+			}
+		case "permission_mode":
+			mode, ok := value.(string)
+			if !ok || (model.Provider == "kimi-web" && mode != "manual") || !slices.Contains([]string{"manual", "auto", "yolo"}, mode) {
+				return errors.New("kimi-web permission_mode must be manual; native auto/yolo requires isolated per-agent execution")
+			}
+		case "disabled_tools":
+			values, ok := value.([]any)
+			if !ok {
+				return errors.New("disabled_tools must be an array of tool names")
+			}
+			for _, value := range values {
+				if name, ok := value.(string); !ok || strings.TrimSpace(name) == "" {
+					return errors.New("disabled_tools must contain only non-empty tool names")
+				}
 			}
 		case "response_format":
 			format, ok := value.(string)

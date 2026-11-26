@@ -1,0 +1,14 @@
+version: 1
+role: critic
+model: ../models/kimi-web.example.yaml
+tools: [read_paper, inspect_artifact, query_knowledge, request_verification, submit_criticism, send_message]
+prompt:
+  type: custom
+  path: ../../prompts/critic.md
+context:
+  strategy: hierarchical-summary
+  persistent_memory: true
+permissions:
+  network: restricted
+  filesystem: workspace-only
+  shell: false

@@ -56,7 +56,7 @@ func (p *accountedProvider) Stream(context.Context, provider.Request) (<-chan pr
 
 func (p *accountedProvider) estimate(request provider.Request) (budget.Estimate, error) {
 	estimate := budget.Estimate{Provider: p.providerName, Requests: 1, Finalization: p.finalizing()}
-	if p.model.Provider == "mock" {
+	if p.model.Provider == "mock" || p.model.Provider == "kimi-web" {
 		return estimate, nil
 	}
 	if p.model.Pricing == nil {

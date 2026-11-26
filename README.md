@@ -23,6 +23,19 @@ docker compose -f deploy/docker-compose.yml exec -T researchd ./bin/researchctl 
 
 The Compose deployment does not mount the host Docker socket. Use `docker compose -f deploy/docker-compose.yml down` to stop it.
 
+### Native Kimi worker fleet
+
+`provider: kimi-web` connects workers to the official Kimi Code `kimi web` server through its experimental KAP API. Each worker owns a separate provider instance, KAP session, and workspace; a shared server is only the transport, not a shared conversation. The Chief Scientist can independently use OpenAI/Astra or another configured provider.
+
+```bash
+export AUTORESEARCH_CONFIG=configs/kimi-web-demo.yaml
+docker compose -f deploy/docker-compose.yml -f deploy/kimi-web.compose.yml --profile kimi-web up -d --build
+# Complete OAuth interactively when you are ready to use your own Kimi subscription:
+docker compose -f deploy/docker-compose.yml -f deploy/kimi-web.compose.yml --profile kimi-web exec -it kimi-web kimi login
+```
+
+Use `configs/kimi-web-fleet.example.yaml` as the OpenAI-Chief/native-Kimi-worker template and configure its actual model, prices, and quotas before a live run. The default native mode is `manual` for Kimi built-in tools; runtime-authorized tools remain autonomous. `make native-kimi-test` verifies real session isolation and the private token relay without OAuth, model prompts, or paid generation. See [provider integration](docs/provider-integration.md) and [deployment](docs/deployment.md) for limitations.
+
 ## Architecture
 
 ```mermaid

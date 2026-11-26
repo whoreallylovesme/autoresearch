@@ -2,37 +2,52 @@
 
 ## Supported abstraction
 
-Providers implement text generation, streaming, tools when supported, structured responses, usage accounting, cancellation, error classification, rate limiting, retries, and capability reporting. Agent backends are separate: a raw completion API is not an agent harness.
+Providers implement text generation, streaming, tools when supported, structured responses, usage accounting, cancellation, error classification, rate limiting, retries, and capability reporting. Agent backends are separate: a raw completion API is not automatically an agent harness. Capabilities that an adapter does not expose are reported as unavailable rather than emulated silently.
 
-The implemented real transport is an OpenAI-compatible Chat Completions client with explicit provider profiles for OpenAI, Kimi/Moonshot, and local endpoints. Non-streaming generation, tool calls, streaming content/usage, cancellation, rate limits, and bounded retries are covered by local HTTP tests. No paid provider call has been made. Other providers and external agent harnesses require independent adapters and conformance tests.
+## Hosted OpenAI and Moonshot
 
+The OpenAI-compatible Chat Completions client supports non-streaming generation, tool calls, streaming content/usage, cancellation, shared endpoint rate limits, and bounded retries through local HTTP tests. `KimiProvider` is a dedicated hosted-Moonshot profile over that transport. It defaults to `https://api.moonshot.ai/v1`, uses the configured API-key environment variable, maps portable token limits to `max_tokens`, supports declared reasoning levels and JSON mode, and reads reported usage fields. Capabilities can be restricted explicitly in YAML.
 
-## Kimi / Moonshot
+`configs/mixed-providers.example.yaml` demonstrates an OpenAI/Astra Chief with independent hosted-Kimi workers. The mixed-fleet integration test uses separate fake endpoints and credentials; it does not spend provider credits.
 
-`KimiProvider` is a dedicated adapter over the OpenAI-compatible transport. It defaults to `https://api.moonshot.ai/v1`, requires `MOONSHOT_API_KEY`, maps portable `max_output_tokens` to `max_tokens`, supports top-level `reasoning_effort` (`low` / `high` / `max`), JSON mode via `response_format`, streaming, tool calls, and reasoning/cache-write usage fields. Capabilities can be restricted explicitly in YAML.
+Official hosted API references:
 
-The official integration is the hosted [Kimi API quickstart](https://platform.moonshot.ai/docs/guide/kimi-k2-5-quickstart); there is no official local “Kimi server” bundled with this project. An OpenAI-compatible private gateway may be used through `base_url`, but its model and parameter support must be configured explicitly.
+- [OpenAI Chat Completions](https://platform.openai.com/docs/api-reference/chat/create)
+- [Kimi Chat Completions](https://platform.moonshot.ai/docs/api/chat)
+- [Kimi OpenAI compatibility](https://platform.moonshot.ai/docs/guide/migrating-from-openai-to-kimi)
 
-`configs/mixed-providers.example.yaml` demonstrates the intended fleet: OpenAI/Astra for the Chief Scientist and a separate `KimiProvider` instance for every worker. Provider instances are independent, while requests for the same provider endpoint share a rate limiter and budget quota. The mixed-fleet integration test runs an OpenAI Chief and three Kimi worker tasks through separate fake endpoints with separate credentials; no paid calls are made.
+## Native Kimi Code: `kimi-web`
 
-## Capability validation
+`provider: kimi-web` is a separate native adapter for the official [`kimi web`](https://moonshotai.github.io/kimi-code/en/reference/kimi-command.html) server. It uses the personal Kimi Code authentication configured by the operator through `kimi login`, not `MOONSHOT_API_KEY`. The local server exposes the experimental Kimi Agent Protocol (KAP) over REST and WebSocket. This implementation was checked against Kimi Code 2.8.0 and its live `/api/v1/kap.md` and `/openapi.json`; use those version-specific schemas instead of assuming that a newer server is compatible.
 
-The adapter accepts only parameters declared by its profile and configured capabilities. It never silently maps `reasoning_effort`, temperature, token limits, or provider extensions to unsupported fields. Model names, prices, quotas, and reasoning levels are configuration, not constants.
+Each configured worker receives its own `KimiWebProvider`, native `session_id`, and `session_workspace/agent_id`. The shared server is only a transport. Session creation uses `workspace_root` and `permission_mode: manual`; workspace paths and agent identifiers are validated. No conversation history is shared between agents.
 
-Official references checked during initial design:
+The provider follows KAP's turn lifecycle:
 
-- [OpenAI Chat Completions API](https://platform.openai.com/docs/api-reference/chat/create): messages, function tools, streaming chunks, and usage semantics. `max_output_tokens` is an internal portable field and must map to the currently supported provider request field.
-- [Kimi Chat Completions API](https://platform.moonshot.ai/docs/api/chat) and [OpenAI compatibility guide](https://platform.moonshot.ai/docs/guide/migrating-from-openai-to-kimi): OpenAI-compatible transport, tools, streaming, and Kimi-specific extensions.
-- [Qwen2.5 0.5B Instruct GGUF model card](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF): 0.49B parameters, quantized GGUF artifacts, llama.cpp usage, and context limitations.
+1. Create a native session lazily.
+2. Submit a unique idempotent `prompt_id` with only messages not already present in that native session. If runtime compaction invalidates the prefix, send an explicit authoritative state replacement.
+3. Wait with `/api/v1/sessions/{id}:wait`; do not infer completion from the last message.
+4. Read `/agents/main/turns`, correlate the user turn to the prompt ID, and extract only assistant messages from that turn and its continuations.
+5. Cancel with `/:cancel`, including background work, on shutdown or context cancellation.
 
-Documentation is not a guarantee of account access. Startup performs local contract validation; optional live capability checks must be explicit and budgeted.
+Runtime tools are described in the native prompt and returned through a strict JSON envelope containing either `tool_calls` or `final_response`. Tool outputs are marked untrusted, and malformed or uncorrelated responses are errors. This is the runtime tool bridge, not native Kimi function calling. Streaming and generic structured-output capability flags remain disabled.
 
-## Errors and retry
+Kimi built-in approvals and questions are never auto-approved. Only `permission_mode: manual` is accepted because all sessions in the current native service share an OS identity; `auto`/`yolo` require a future per-agent execution boundary. Runtime-authorized tools remain autonomous inside their existing Go policies.
 
-Retry only classified transient transport, throttling, and server errors, with bounded exponential backoff, jitter, attempt limits, deadline, and context cancellation. Authentication, permission, invalid request, and unsupported capability failures are permanent. Usage is reconciled even when a response arrives after a timeout where possible.
+Subscription-backed native calls require request quotas and rate limits, not per-token pricing. Monetary expenditure and token counts are not invented when KAP does not report them. Existing provider instances must be recreated after server-token rotation. Restart recovery creates fresh native sessions and relies on durable runtime research state; old native sessions remain in Kimi's private history.
+
+`make native-kimi-test` verifies a real native server, distinct sessions/workspaces, and the private token handoff without OAuth or prompts. Fake-KAP tests cover multi-turn tool calls, response correlation, cancellation, retries, and the OpenAI-Chief/native-worker fleet. Live OAuth and paid/subscription generation are not part of development tests and have not been performed.
+
+## Capability validation and failures
+
+Adapters accept only declared parameters and configured capabilities. Unsupported token limits, reasoning levels, permission modes, or provider extensions are errors rather than silently ignored fields. Model names, quotas, reasoning levels, and hosted prices are configuration, not hardcoded availability claims. Startup validation is local; live model discovery and account access require explicit operator action.
+
+Retry is limited to classified transient transport, throttling, and server errors with bounded exponential backoff, deadlines, and cancellation. Authentication, permission, invalid request, malformed protocol data, and unsupported capabilities are permanent. Prompt IDs make native retries idempotent; a lost session-creation response can leave an empty unused session, so session creation is not claimed to be exactly once.
 
 ## Deterministic and local test models
 
-`MockProvider` is implemented as a deterministic scripted provider for unit and integration tests; it performs no network calls and has zero monetary cost. Real provider runs additionally require explicit token pricing and conservative maximum-input estimation in the model YAML. A separate OpenAI-compatible local provider can target a small Hugging Face model served by llama.cpp for realistic credential-free inference. The local model is not used as a deterministic oracle and is never required by unit tests.
+`MockProvider` is deterministic, scripted, credential-free, and zero-cost. A separate OpenAI-compatible local provider can target the pinned Qwen2.5 0.5B GGUF model through llama.cpp. `HFMockProvider` supplies deterministic tool plans and bounded local narration; fabricated/source-like narration is rejected. The small model is not a scientific oracle and is not required by unit tests.
 
-No development test may spend paid API credits. Unattended use requires provider authentication and terms that explicitly permit automation.
+- [Qwen2.5 0.5B Instruct GGUF model card](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF)
+
+No development test may spend paid API credits or silently consume subscription-backed generation. Unattended workloads require authentication and terms that explicitly permit automation.

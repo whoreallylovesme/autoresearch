@@ -18,6 +18,10 @@ fi
 printf '%s  %s\n' '74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db' "$model_file" | sha256sum -c -
 docker compose -f deploy/docker-compose.yml config >/dev/null
 docker compose -f deploy/docker-compose.yml up -d --build
+if docker compose -f deploy/docker-compose.yml ps --status running --services | grep -Eq '^kimi-(web|token-relay)$'; then
+  echo 'Native Kimi services must not start in the default Compose profile' >&2
+  exit 1
+fi
 for _ in $(seq 1 120); do
   if curl -fsS http://127.0.0.1:${AUTORESEARCH_UI_PORT}/health >/dev/null 2>&1 && curl -fsS http://127.0.0.1:${AUTORESEARCH_API_PORT}/api/v1/run/status >/dev/null 2>&1 && curl -fsS http://127.0.0.1:${AUTORESEARCH_MODEL_PORT}/health >/dev/null 2>&1; then
     break
