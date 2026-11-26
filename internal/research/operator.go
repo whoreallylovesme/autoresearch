@@ -91,16 +91,9 @@ func (r *Runtime) Chat(ctx context.Context, text string, directive bool) (string
 	if err != nil {
 		return "", err
 	}
-	responsePayload, _ := json.Marshal(map[string]string{"text": result.Content, "correlation_id": message.CorrelationID})
-	response, err := messaging.New(r.status.ID, "chief", "operator", messaging.TypeDirect, responsePayload)
-	if err != nil {
+	if err := r.storeOperatorResponse(message, result.Content); err != nil {
 		return "", err
 	}
-	response.CorrelationID = message.CorrelationID
-	r.mu.Lock()
-	r.messages = append(r.messages, response)
-	r.persistMessageLocked(response)
-	r.mu.Unlock()
 	return result.Content, nil
 }
 

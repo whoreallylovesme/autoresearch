@@ -2,6 +2,7 @@ package research_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -140,22 +141,100 @@ func TestPauseAndResumeResearch(t *testing.T) {
 	}
 }
 
-func TestPersistentOperatorChat(t *testing.T) {
-	cfg := loadConfig(t)
-	configuration := cfg
+func TestPersistentOperatorReplies(t *testing.T) {
+	tests := []struct {
+		name        string
+		text        string
+		directive   bool
+		requestType messaging.Type
+	}{
+		{name: "ordinary chat", text: "Explain current research state", requestType: messaging.TypeHumanMessage},
+		{name: "directive", text: "stop", directive: true, requestType: messaging.TypeHumanDirective},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			configuration := loadConfig(t)
+			configuration.Runtime.DataDir = t.TempDir()
+			runtime, err := research.NewPersistent(configuration, research.DemoFactory())
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := runtime.Chat(context.Background(), test.text, test.directive)
+			if err != nil || response == "" {
+				t.Fatalf("Chat() = %q, %v", response, err)
+			}
+			if err := runtime.Close(); err != nil {
+				t.Fatal(err)
+			}
+			runtime, err = research.NewPersistent(configuration, research.DemoFactory())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer runtime.Close()
+
+			messages := runtime.Messages()
+			if len(messages) != 2 {
+				t.Fatalf("messages = %#v", messages)
+			}
+			request, reply := messages[0], messages[1]
+			if request.Type != test.requestType {
+				t.Fatalf("request type = %q, want %q", request.Type, test.requestType)
+			}
+			if reply.Type != messaging.TypeDirect || reply.Sender != "chief" || reply.Recipient != "operator" {
+				t.Fatalf("reply = %#v", reply)
+			}
+			if reply.RunID != request.RunID {
+				t.Fatalf("reply run ID = %q, request run ID = %q", reply.RunID, request.RunID)
+			}
+			if reply.CorrelationID != request.CorrelationID {
+				t.Fatalf("reply correlation ID = %q, request correlation ID = %q", reply.CorrelationID, request.CorrelationID)
+			}
+			var payload struct {
+				Text          string `json:"text"`
+				CorrelationID string `json:"correlation_id"`
+			}
+			if err := json.Unmarshal(reply.Payload, &payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload.Text != response {
+				t.Fatalf("reply text = %q, Chat response = %q", payload.Text, response)
+			}
+			if payload.CorrelationID != request.CorrelationID {
+				t.Fatalf("payload correlation ID = %q, request correlation ID = %q", payload.CorrelationID, request.CorrelationID)
+			}
+		})
+	}
+}
+
+func TestPersistentOperatorChatProviderFailureDoesNotAppendReply(t *testing.T) {
+	providerErr := errors.New("provider failed")
+	configuration := loadConfig(t)
 	configuration.Runtime.DataDir = t.TempDir()
-	runtime, err := research.NewPersistent(configuration, research.DemoFactory())
+	runtime, err := research.NewPersistent(configuration, func(_ string, _ config.AgentConfig) (provider.Provider, error) {
+		return provider.NewMockHandler(func(context.Context, provider.Request) (provider.Response, error) {
+			return provider.Response{}, providerErr
+		}), nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := runtime.Chat(context.Background(), "Explain current research state", false)
+	if response != "" || !errors.Is(err, providerErr) {
+		t.Fatalf("Chat() = %q, %v", response, err)
+	}
+	if messages := runtime.Messages(); len(messages) != 1 || messages[0].Type != messaging.TypeHumanMessage {
+		t.Fatalf("messages after provider failure = %#v", messages)
+	}
+	if err := runtime.Close(); err != nil {
+		t.Fatal(err)
+	}
+	runtime, err = research.NewPersistent(configuration, research.DemoFactory())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer runtime.Close()
-	response, err := runtime.Chat(context.Background(), "Explain current research state", false)
-	if err != nil || response == "" {
-		t.Fatalf("Chat() = %q, %v", response, err)
-	}
-	messages := runtime.Messages()
-	if len(messages) != 2 || messages[0].Type != messaging.TypeHumanMessage || messages[1].Recipient != "operator" {
-		t.Fatalf("messages = %#v", messages)
+	if messages := runtime.Messages(); len(messages) != 1 || messages[0].Type != messaging.TypeHumanMessage {
+		t.Fatalf("persisted messages after provider failure = %#v", messages)
 	}
 }
 

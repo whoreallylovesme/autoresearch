@@ -3,12 +3,19 @@ package executor
 import (
 	"context"
 	"errors"
+	"regexp"
 	"time"
 
 	"github.com/whoreallylovesme/autoresearch/internal/artifact"
 )
 
 var ErrJobNotFound = errors.New("executor job not found")
+
+var jobIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,96}$`)
+
+func validJobID(id string) bool {
+	return id != "." && id != ".." && jobIDPattern.MatchString(id)
+}
 
 type State string
 

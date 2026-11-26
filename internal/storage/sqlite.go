@@ -91,9 +91,9 @@ func (s *SQLite) migrate(ctx context.Context) error {
 	return nil
 }
 
-func (s *SQLite) SaveRun(ctx context.Context, run Run, event *Event) error {
+func (s *SQLite) saveEntityWithEvent(ctx context.Context, saveEntity func(executor) error, event *Event) error {
 	return s.transaction(ctx, func(tx *sql.Tx) error {
-		if err := saveRun(ctx, tx, run); err != nil {
+		if err := saveEntity(tx); err != nil {
 			return err
 		}
 		if event != nil {
@@ -101,6 +101,12 @@ func (s *SQLite) SaveRun(ctx context.Context, run Run, event *Event) error {
 		}
 		return nil
 	})
+}
+
+func (s *SQLite) SaveRun(ctx context.Context, run Run, event *Event) error {
+	return s.saveEntityWithEvent(ctx, func(exec executor) error {
+		return saveRun(ctx, exec, run)
+	}, event)
 }
 
 func saveRun(ctx context.Context, executor executor, run Run) error {
@@ -117,15 +123,9 @@ func saveRun(ctx context.Context, executor executor, run Run) error {
 }
 
 func (s *SQLite) SaveTask(ctx context.Context, task scheduler.Task, event *Event) error {
-	return s.transaction(ctx, func(tx *sql.Tx) error {
-		if err := saveTask(ctx, tx, task); err != nil {
-			return err
-		}
-		if event != nil {
-			return saveEvent(ctx, tx, *event)
-		}
-		return nil
-	})
+	return s.saveEntityWithEvent(ctx, func(exec executor) error {
+		return saveTask(ctx, exec, task)
+	}, event)
 }
 
 func saveTask(ctx context.Context, executor executor, task scheduler.Task) error {
@@ -157,15 +157,9 @@ func (s *SQLite) CompleteTask(ctx context.Context, task scheduler.Task, finding 
 }
 
 func (s *SQLite) SaveFinding(ctx context.Context, finding Finding, event *Event) error {
-	return s.transaction(ctx, func(tx *sql.Tx) error {
-		if err := saveFinding(ctx, tx, finding); err != nil {
-			return err
-		}
-		if event != nil {
-			return saveEvent(ctx, tx, *event)
-		}
-		return nil
-	})
+	return s.saveEntityWithEvent(ctx, func(exec executor) error {
+		return saveFinding(ctx, exec, finding)
+	}, event)
 }
 
 func saveFinding(ctx context.Context, executor executor, finding Finding) error {
@@ -179,15 +173,9 @@ func saveFinding(ctx context.Context, executor executor, finding Finding) error 
 }
 
 func (s *SQLite) SaveMessage(ctx context.Context, message messaging.Message, event *Event) error {
-	return s.transaction(ctx, func(tx *sql.Tx) error {
-		if err := saveMessage(ctx, tx, message); err != nil {
-			return err
-		}
-		if event != nil {
-			return saveEvent(ctx, tx, *event)
-		}
-		return nil
-	})
+	return s.saveEntityWithEvent(ctx, func(exec executor) error {
+		return saveMessage(ctx, exec, message)
+	}, event)
 }
 
 func saveMessage(ctx context.Context, executor executor, message messaging.Message) error {

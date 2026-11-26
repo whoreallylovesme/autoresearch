@@ -27,12 +27,6 @@ func NewRateLimiter(requestsPerMinute int) RateLimiter {
 	return &requestLimiter{interval: time.Minute / time.Duration(requestsPerMinute)}
 }
 
-type RetryPolicy struct {
-	MaxAttempts    int
-	InitialBackoff time.Duration
-	MaxBackoff     time.Duration
-}
-
 type OpenAIOptions struct {
 	Provider          string
 	Model             string
@@ -73,18 +67,16 @@ func NewOpenAI(options OpenAIOptions) (*OpenAIProvider, error) {
 	if options.HTTPClient == nil {
 		options.HTTPClient = &http.Client{Timeout: 15 * time.Minute}
 	}
-	if options.Retry.MaxAttempts == 0 {
-		options.Retry.MaxAttempts = 3
-	}
-	if options.Retry.MaxAttempts < 1 || options.Retry.InitialBackoff < 0 || options.Retry.MaxBackoff < options.Retry.InitialBackoff {
-		return nil, errors.New("invalid retry policy")
+	retry, err := normalizeRetryPolicy(options.Retry, "")
+	if err != nil {
+		return nil, err
 	}
 	if options.RequestsPerMinute < 0 {
 		return nil, errors.New("invalid rate limit")
 	}
 	provider := &OpenAIProvider{
 		provider: options.Provider, model: options.Model, endpoint: parsed.String() + "/chat/completions",
-		apiKey: options.APIKey, client: options.HTTPClient, capabilities: options.Capabilities, retry: options.Retry,
+		apiKey: options.APIKey, client: options.HTTPClient, capabilities: cloneCapabilities(options.Capabilities), retry: retry,
 	}
 	provider.limiter = options.Limiter
 	if provider.limiter == nil && options.RequestsPerMinute > 0 {
@@ -94,9 +86,7 @@ func NewOpenAI(options OpenAIOptions) (*OpenAIProvider, error) {
 }
 
 func (p *OpenAIProvider) Capabilities() Capabilities {
-	capabilities := p.capabilities
-	capabilities.SupportedParameters = append([]string(nil), capabilities.SupportedParameters...)
-	return capabilities
+	return cloneCapabilities(p.capabilities)
 }
 
 func (p *OpenAIProvider) Generate(ctx context.Context, request Request) (Response, error) {
@@ -104,35 +94,14 @@ func (p *OpenAIProvider) Generate(ctx context.Context, request Request) (Respons
 	if err != nil {
 		return Response{}, err
 	}
-	for attempt := 0; attempt < p.retry.MaxAttempts; attempt++ {
+	return generateWithRetry(ctx, p.retry, func(ctx context.Context) (Response, error) {
 		if p.limiter != nil {
 			if err := p.limiter.wait(ctx); err != nil {
 				return Response{}, err
 			}
 		}
-		response, err := p.roundTrip(ctx, body)
-		if err == nil {
-			return response, nil
-		}
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return Response{}, ctxErr
-		}
-		if !retryable(err) || attempt == p.retry.MaxAttempts-1 {
-			return Response{}, err
-		}
-		backoff := p.retry.InitialBackoff << attempt
-		if backoff > p.retry.MaxBackoff {
-			backoff = p.retry.MaxBackoff
-		}
-		timer := time.NewTimer(backoff)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return Response{}, ctx.Err()
-		case <-timer.C:
-		}
-	}
-	panic("unreachable")
+		return p.roundTrip(ctx, body)
+	})
 }
 
 func (p *OpenAIProvider) roundTrip(ctx context.Context, body []byte) (Response, error) {
@@ -355,11 +324,6 @@ func classifyStatus(status int) error {
 		kind = ErrorTransient
 	}
 	return &Error{Kind: kind, StatusCode: status}
-}
-
-func retryable(err error) bool {
-	var providerError *Error
-	return errors.As(err, &providerError) && (providerError.Kind == ErrorTransient || providerError.Kind == ErrorRateLimit)
 }
 
 func (l *requestLimiter) wait(ctx context.Context) error {

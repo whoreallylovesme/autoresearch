@@ -203,29 +203,19 @@ func (g *Graph) Node(id string) (Node, bool) {
 func (g *Graph) Nodes() []Node {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	nodes := make([]Node, 0, len(g.nodes))
-	for _, node := range g.nodes {
-		nodes = append(nodes, cloneNode(node))
-	}
-	sort.Slice(nodes, func(i, j int) bool { return nodes[i].ID < nodes[j].ID })
-	return nodes
+	return g.nodesLocked()
 }
 
 func (g *Graph) Edges() []Edge {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	edges := make([]Edge, 0, len(g.edges))
-	for _, edge := range g.edges {
-		edges = append(edges, edge)
-	}
-	sort.Slice(edges, func(i, j int) bool { return edges[i].ID < edges[j].ID })
-	return edges
+	return g.edgesLocked()
 }
 
 func (g *Graph) Revisions(nodeID string) []Revision {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	revisions := append([]Revision(nil), g.revisions[nodeID]...)
+	revisions := cloneRevisions(g.revisions[nodeID])
 	sort.Slice(revisions, func(i, j int) bool { return revisions[i].Revision < revisions[j].Revision })
 	return revisions
 }
@@ -258,6 +248,7 @@ func (g *Graph) Restore(snapshot Snapshot) error {
 		if _, ok := nodes[revision.NodeID]; !ok {
 			return errors.New("revision references missing node")
 		}
+		revision.Node = cloneNode(revision.Node)
 		revisions[revision.NodeID] = append(revisions[revision.NodeID], revision)
 	}
 	for _, edge := range snapshot.Edges {
@@ -280,7 +271,7 @@ func (g *Graph) persistLocked() error {
 func (g *Graph) snapshotLocked() Snapshot {
 	snapshot := Snapshot{Nodes: g.nodesLocked(), Edges: g.edgesLocked()}
 	for _, revisions := range g.revisions {
-		snapshot.Revisions = append(snapshot.Revisions, revisions...)
+		snapshot.Revisions = append(snapshot.Revisions, cloneRevisions(revisions)...)
 	}
 	sort.Slice(snapshot.Revisions, func(i, j int) bool {
 		if snapshot.Revisions[i].NodeID != snapshot.Revisions[j].NodeID {
@@ -350,4 +341,12 @@ func cloneNode(node Node) Node {
 	node.Artifacts = append([]string(nil), node.Artifacts...)
 	node.EvidenceRefs = append([]string(nil), node.EvidenceRefs...)
 	return node
+}
+
+func cloneRevisions(revisions []Revision) []Revision {
+	cloned := append([]Revision(nil), revisions...)
+	for i := range cloned {
+		cloned[i].Node = cloneNode(cloned[i].Node)
+	}
+	return cloned
 }
