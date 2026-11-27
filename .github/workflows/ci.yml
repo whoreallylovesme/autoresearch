@@ -19,35 +19,28 @@ jobs:
           go-version: "1.24"
       - name: Check formatting
         if: hashFiles('go.mod') != ''
-        run: test -z "$(gofmt -l .)"
+        run: make fmt-check
       - name: Vet
         if: hashFiles('go.mod') != ''
-        run: go vet ./...
+        run: make lint
       - name: Test with race detector
         if: hashFiles('go.mod') != ''
-        run: go test -race -shuffle=on ./...
+        run: make test
       - name: Integration tests
         if: hashFiles('go.mod') != ''
-        run: go test -race -tags=integration ./tests/...
+        run: make test-integration
   python:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
           cache-dependency-glob: web/uv.lock
-      - name: Install
-        run: uv sync --frozen
       - name: Lint
-        run: uv run --frozen ruff check .
-      - name: Check formatting
-        run: uv run --frozen ruff format --check .
+        run: make web-lint
       - name: Test
-        run: uv run --frozen pytest -q
+        run: make web-test
   repository:
     runs-on: ubuntu-latest
     steps:
@@ -78,10 +71,6 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - name: Install Python dependencies
-        run: uv sync --frozen --project web
-      - name: Install browser dependencies
-        run: npm ci --prefix web
       - name: Browser acceptance
         run: make browser-test
 

@@ -10,6 +10,14 @@ def test_live_javascript_has_resumable_sse_and_visibility_fallback():
     assert "addEventListener" in source
 
 
+def test_graph_javascript_consumes_normalized_elements_without_snapshot_conversion():
+    source = Path("autoresearch_ui/static/graph.js").read_text()
+    assert "fetch('/internal/graph/elements'" in source
+    assert "graphElementsFromSnapshot" not in source
+    assert "from_node" not in source
+    assert "to_node" not in source
+
+
 def test_theme_has_accessible_targets_and_responsive_tables():
     source = Path("autoresearch_ui/static/theme.css").read_text()
     assert "content-visibility: auto" in source

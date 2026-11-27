@@ -34,3 +34,9 @@ All notable changes are documented here. The project follows Semantic Versioning
 - Cobra-based daemon/operator CLI and multi-stage Docker Compose deployment for llama.cpp, runtime, and UI.
 - Native Kimi Code `kimi web` workers with per-agent KAP sessions/workspaces, incremental history, deterministic runtime tool envelopes, cancellation, and request-only subscription accounting.
 - Optional non-root native Kimi Compose profile with an isolated token relay, live session-isolation smoke test, and contributor `AGENTS.md` guidance.
+
+### Changed
+
+- Consolidated shared ID, retry, capability, pacing, accounting, persistence, artifact, graph, test, and model-bootstrap logic into focused package-local or narrowly scoped helpers.
+- Hardened executor Job.ID path validation, pre-read artifact limits, capability immutability, graph snapshot isolation, and budget recovery/persistence-failure handling.
+- Unified initial and live web graph conversion, reused canonical Make targets in CI, and removed redundant browser/Compose setup duplication.

@@ -12,6 +12,7 @@ import (
 
 	"github.com/whoreallylovesme/autoresearch/internal/artifact"
 	"github.com/whoreallylovesme/autoresearch/internal/executor"
+	"github.com/whoreallylovesme/autoresearch/internal/executor/executortest"
 )
 
 const testImage = "python@sha256:191083cdf6c7bda8c76158983163ead5d5cf7b77cf3033e805bb0f5296f51b4b"
@@ -132,15 +133,8 @@ func writeWorkspace(t *testing.T, workspace, source string) {
 
 func requireDocker(t *testing.T) {
 	t.Helper()
-	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker is unavailable")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := exec.CommandContext(ctx, "docker", "info", "--format", "{{.ServerVersion}}").Run(); err != nil {
-		t.Skipf("Docker daemon is unavailable: %v", err)
-	}
-	ctx, cancel = context.WithTimeout(context.Background(), 2*time.Minute)
+	executortest.RequireDaemon(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	if output, err := exec.CommandContext(ctx, "docker", "pull", testImage).CombinedOutput(); err != nil {
 		t.Skipf("pinned test image is unavailable: %v: %s", err, output)

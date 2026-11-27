@@ -12,8 +12,9 @@ import (
 	"net/url"
 	"slices"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/whoreallylovesme/autoresearch/internal/ratelimit"
 )
 
 type RateLimiter interface {
@@ -51,9 +52,8 @@ type OpenAIProvider struct {
 }
 
 type requestLimiter struct {
-	mu       sync.Mutex
+	pacer    ratelimit.Pacer
 	interval time.Duration
-	next     time.Time
 }
 
 func NewOpenAI(options OpenAIOptions) (*OpenAIProvider, error) {
@@ -327,26 +327,7 @@ func classifyStatus(status int) error {
 }
 
 func (l *requestLimiter) wait(ctx context.Context) error {
-	l.mu.Lock()
-	now := time.Now()
-	if l.next.Before(now) {
-		l.next = now
-	}
-	reserved := l.next
-	l.next = l.next.Add(l.interval)
-	l.mu.Unlock()
-	wait := reserved.Sub(now)
-	if wait <= 0 {
-		return nil
-	}
-	timer := time.NewTimer(wait)
-	defer timer.Stop()
-	select {
-	case <-timer.C:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return l.pacer.Wait(ctx, l.interval)
 }
 
 type wireMessage struct {

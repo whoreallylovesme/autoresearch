@@ -13,6 +13,7 @@ import (
 
 	"github.com/whoreallylovesme/autoresearch/internal/artifact"
 	"github.com/whoreallylovesme/autoresearch/internal/knowledge"
+	"github.com/whoreallylovesme/autoresearch/internal/ratelimit"
 )
 
 type searchFlight struct {
@@ -37,7 +38,7 @@ type Fetcher struct {
 	searches    map[string]*searchFlight
 	searchCache map[string]cachedSearch
 	pdfs        map[string]*pdfFlight
-	hosts       map[string]time.Time
+	hosts       map[string]*ratelimit.Pacer
 }
 
 type cachedSearch struct {
@@ -55,7 +56,7 @@ func New(store *knowledge.Store, artifacts *artifact.Store, processor *PDFProces
 			filtered = append(filtered, source)
 		}
 	}
-	return &Fetcher{store: store, artifacts: artifacts, processor: processor, sources: filtered, client: &http.Client{Timeout: 45 * time.Second}, searches: map[string]*searchFlight{}, searchCache: map[string]cachedSearch{}, pdfs: map[string]*pdfFlight{}, hosts: map[string]time.Time{}}
+	return &Fetcher{store: store, artifacts: artifacts, processor: processor, sources: filtered, client: &http.Client{Timeout: 45 * time.Second}, searches: map[string]*searchFlight{}, searchCache: map[string]cachedSearch{}, pdfs: map[string]*pdfFlight{}, hosts: map[string]*ratelimit.Pacer{}}
 }
 
 func (f *Fetcher) Search(ctx context.Context, query string, limit int) ([]knowledge.Paper, error) {
@@ -220,19 +221,11 @@ func (f *Fetcher) waitHost(ctx context.Context, rawURL string) error {
 		return errors.New("PDF URL must use HTTP(S)")
 	}
 	f.mu.Lock()
-	now := time.Now()
-	next := f.hosts[parsed.Host]
-	if next.Before(now) {
-		next = now
+	pacer := f.hosts[parsed.Host]
+	if pacer == nil {
+		pacer = &ratelimit.Pacer{}
+		f.hosts[parsed.Host] = pacer
 	}
-	f.hosts[parsed.Host] = next.Add(time.Second)
 	f.mu.Unlock()
-	timer := time.NewTimer(time.Until(next))
-	defer timer.Stop()
-	select {
-	case <-timer.C:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return pacer.Wait(ctx, time.Second)
 }

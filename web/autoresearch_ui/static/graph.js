@@ -59,19 +59,23 @@
   async function refreshResearchGraph() {
     const container = document.getElementById('research-graph');
     if (!container) return;
-    const response = await fetch('/runtime/graph', { headers: { 'Accept': 'application/json' } });
-    if (!response.ok) return;
-    const snapshot = await response.json();
-    latestElements = window.graphElementsFromSnapshot ? window.graphElementsFromSnapshot(snapshot) : latestElements;
-    if (window.graphElementsFromSnapshot) render(false);
+    try {
+      const response = await fetch('/internal/graph/elements', { headers: { 'Accept': 'application/json' } });
+      if (!response.ok) {
+        latestElements = [];
+        render(false);
+        return;
+      }
+      latestElements = await response.json();
+      render(false);
+    } catch (error) {
+      latestElements = [];
+      render(false);
+      throw error;
+    }
   }
 
   window.initResearchGraph = initResearchGraph;
   window.refreshResearchGraph = refreshResearchGraph;
   window.fitResearchGraph = () => { if (cy) { cy.fit(); cy.center(); } };
-  window.graphElementsFromSnapshot = snapshot => {
-    const nodes = (snapshot.nodes || []).map(node => ({ group: 'nodes', data: { id: node.id, label: (node.description || node.id).slice(0, 42), type: node.type, status: node.status, author: node.author, created_at: node.created_at, revision: node.revision, description: node.description }, classes: `${node.type} status-${node.status}` }));
-    const edges = (snapshot.edges || []).map(edge => ({ group: 'edges', data: { id: edge.id, source: edge.from_node, target: edge.to_node, label: edge.type } }));
-    return [...nodes, ...edges];
-  };
 })();

@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-11-26
+Last updated: 2026-11-27
 
 ## Current status
 
@@ -65,6 +65,8 @@ Contributor handoff rules are in `AGENTS.md`; the CLI uses Cobra, the UI uses `u
 ## Maintenance
 
 Random 128-bit identifiers for messages, research events, native prompts, knowledge claims, and verification records are centralized in `internal/id`. `New` preserves error returns and `MustNew` preserves the existing explicit panic contract. Go package-test placement and the top-level integration-test boundary are documented in `AGENTS.md` and `docs/testing.md`. The refactor passed the full Go race/integration suite, all deterministic research demos, local-model acceptance, and both Compose smoke tests.
+
+Follow-up consolidation centralizes provider retry/capability snapshots, executor artifact limits and Job.ID validation, operator reply persistence, budget account mutations, SQLite entity/event transactions, graph snapshot copying, and provider/literature pacing. Review-found budget recovery and persistence-atomicity defects are fixed with regression coverage rather than preserved as accidental behavior. Browser graph conversion now has one Python owner, test infrastructure reuses bounded process/Docker helpers, CI delegates to canonical Make targets, and model download/checksum bootstrap is shared. All changes passed independent task and whole-branch reviews, full Go/Python verification, browser acceptance with live graph refresh, deterministic demos, local-model execution, and both Compose smoke tests. No paid or subscription-backed prompts were used.
 
 ## Handoff
 

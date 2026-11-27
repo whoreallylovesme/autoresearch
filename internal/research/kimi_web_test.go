@@ -178,35 +178,16 @@ func TestOpenAIChiefWithNativeKimiWorkerSessions(t *testing.T) {
 
 func newNativeMixedChief(t *testing.T) *httptest.Server {
 	t.Helper()
-	return httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		var body provider.Request
-		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
-			t.Error(err)
-		}
-		steps := 0
-		for _, message := range body.Messages {
-			if message.Role == "assistant" && len(message.ToolCalls) > 0 {
-				steps++
-			}
-		}
-		writer.Header().Set("Content-Type", "application/json")
-		if steps >= 5 {
-			_ = json.NewEncoder(writer).Encode(map[string]any{"id": "chief-final", "choices": []any{map[string]any{"message": map[string]any{"role": "assistant", "content": "Native mixed-fleet report"}}}, "usage": map[string]any{"prompt_tokens": 10, "completion_tokens": 5}})
-			return
-		}
-		var call provider.ToolCall
-		switch steps {
-		case 0:
-			call = provider.ToolCall{ID: "chief-a", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"native-a","title":"Native A","description":"Investigate native A","role":"baby-scientist","idempotency_key":"native-a"}`)}
-		case 1:
-			call = provider.ToolCall{ID: "chief-b", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"native-b","title":"Native B","description":"Investigate native B","role":"baby-scientist","idempotency_key":"native-b"}`)}
-		case 2:
-			call = provider.ToolCall{ID: "chief-c", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"native-critic","title":"Native criticism","description":"Review native findings","role":"critic","dependencies":["native-a","native-b"],"idempotency_key":"native-critic"}`)}
-		case 3:
-			call = provider.ToolCall{ID: "chief-query", Name: "query_knowledge", Arguments: json.RawMessage(`{"query":"all findings","wait_for_tasks":true}`)}
-		case 4:
-			call = provider.ToolCall{ID: "chief-finalize", Name: "finalize_research", Arguments: json.RawMessage(`{}`)}
-		}
-		_ = json.NewEncoder(writer).Encode(map[string]any{"id": fmt.Sprintf("chief-%d", steps), "choices": []any{map[string]any{"finish_reason": "tool_calls", "message": map[string]any{"role": "assistant", "content": nil, "tool_calls": []any{map[string]any{"id": call.ID, "type": "function", "function": map[string]any{"name": call.Name, "arguments": string(call.Arguments)}}}}}}, "usage": map[string]any{"prompt_tokens": 10, "completion_tokens": 5}})
-	}))
+	return newScriptedChief(t, scriptedChiefConfig{
+		idPrefix:      "chief",
+		finalID:       "chief-final",
+		finalResponse: "Native mixed-fleet report",
+		script: []provider.ToolCall{
+			{ID: "chief-a", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"native-a","title":"Native A","description":"Investigate native A","role":"baby-scientist","idempotency_key":"native-a"}`)},
+			{ID: "chief-b", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"native-b","title":"Native B","description":"Investigate native B","role":"baby-scientist","idempotency_key":"native-b"}`)},
+			{ID: "chief-c", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"native-critic","title":"Native criticism","description":"Review native findings","role":"critic","dependencies":["native-a","native-b"],"idempotency_key":"native-critic"}`)},
+			{ID: "chief-query", Name: "query_knowledge", Arguments: json.RawMessage(`{"query":"all findings","wait_for_tasks":true}`)},
+			{ID: "chief-finalize", Name: "finalize_research", Arguments: json.RawMessage(`{}`)},
+		},
+	})
 }

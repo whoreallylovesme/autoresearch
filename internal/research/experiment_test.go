@@ -2,12 +2,12 @@ package research_test
 
 import (
 	"context"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/whoreallylovesme/autoresearch/internal/config"
+	"github.com/whoreallylovesme/autoresearch/internal/executor/executortest"
 	"github.com/whoreallylovesme/autoresearch/internal/experiment"
 	"github.com/whoreallylovesme/autoresearch/internal/graph"
 	"github.com/whoreallylovesme/autoresearch/internal/research"
@@ -64,12 +64,7 @@ func TestAutonomousReproducibleExperiment(t *testing.T) {
 
 func requireExperimentDocker(t *testing.T) {
 	t.Helper()
-	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker unavailable")
-	}
-	if err := exec.Command("docker", "info", "--format", "{{.ServerVersion}}").Run(); err != nil {
-		t.Skip("Docker daemon unavailable")
-	}
+	executortest.RequireDaemon(t)
 }
 
 func findGraphNode(snapshot graph.Snapshot, id string) (graph.Node, bool) {
