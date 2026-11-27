@@ -91,7 +91,7 @@ Research state uses SQLite WAL, transactional events/snapshots, durable messages
 
 ## Documentation
 
-Start with the [vision](docs/vision.md), [architecture](docs/architecture.md), and [security model](docs/security.md). Important decisions are recorded in [ADRs](docs/adr/). Development coordination lives in [docs/progress.md](docs/progress.md).
+Start with the [vision](docs/vision.md), [architecture](docs/architecture.md), and [security model](docs/security.md). Important decisions are recorded in [ADRs](docs/adr/). Development coordination lives in [docs/progress.md](docs/progress.md). Multi-agent delegation patterns and boundaries are documented in [Multi-agent development](docs/multi-agent-development.md).
 
 ## Contributing and security
 

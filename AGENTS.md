@@ -9,6 +9,16 @@ AutoResearch is a Go scientific-agent runtime with a Python/NiceGUI control cent
 - Docker Compose deployment is in `deploy/`; container images and the local GGUF model are pinned. Do not mount the host Docker socket into agent workloads.
 - Use the repository Makefile rather than inventing parallel build or test commands.
 
+## Multi-agent development
+
+Delegation is authorized and encouraged for independent work. AutoResearch has no repository-specific cap on agent count, delegation waves, workflow size, or choice of multi-agent tactic. Do not require separate approval merely for selecting a role-based workflow, a large AgentSwarm, or a Tower mission.
+
+Use the simplest effective structure and scale it to the actual independent work. Suitable patterns include single agents, mixed `plan`/`explore`/`coder` roles, item-based AgentSwarm fan-out, Tower missions, and multi-wave discovery → implementation → verification → review → integration workflows. See `docs/multi-agent-development.md` for concrete examples.
+
+These repository permissions do not remove platform boundaries. AgentSwarm requires user-enabled swarm mode and accepts at most 128 total subagents per invocation; larger work uses additional waves. Tower is experimental, requires explicit feature/mode activation, and is mutually exclusive with Swarm, Plan, and Goal modes. Model quotas, execution budgets, tool permissions, security rules, and verification requirements remain in force. Built-in subagents do not recursively dispatch by default; deeper delegation requires an explicitly authorized custom profile.
+
+Give every writer a non-conflicting scope and use separate worktrees for concurrent coding. Do not mutate the same checkout, Git refs, or deployment concurrently. A designated integrator owns final conflict resolution, full verification, commits, pushes, and merges. Never spend paid API credits or launch subscription-backed research prompts merely to demonstrate agent count.
+
 ## Verification
 
 Run `make fmt-check lint test test-integration validate` for Go changes and `make web-lint web-test` for web changes. Run relevant demo, browser, or Compose acceptance tests for end-to-end changes. `make native-kimi-test` must not submit model prompts or require OAuth. Never spend paid API credits in development tests.

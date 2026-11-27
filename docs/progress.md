@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-11-26
+Last updated: 2026-11-27
 
 ## Current status
 
@@ -65,3 +65,7 @@ Contributor handoff rules are in `AGENTS.md`; the CLI uses Cobra, the UI uses `u
 ## Handoff
 
 The public repository is `https://github.com/whoreallylovesme/autoresearch`. Development and runtime execution were performed on the remote VPS in `/opt/autoresearch` and sibling milestone worktrees. Private credentials and research data are not committed. Use the README quick start and deployment guide; do not treat small-model narration as scientific evidence.
+
+## Contributor multi-agent workflows
+
+Role-based agents, AgentSwarm, Tower, and multi-wave development workflows are explicitly authorized without a repository-specific headcount or workflow-size limit. `AGENTS.md` assigns integration and safety responsibilities; `docs/multi-agent-development.md` documents concrete AutoResearch examples. Platform limits are stated explicitly rather than hidden: swarm mode is user-controlled and capped at 128 total subagents per invocation, Tower is experimental, explicitly enabled, and mode-exclusive, and resource/security/verification policies remain mandatory.
