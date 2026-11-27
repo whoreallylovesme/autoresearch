@@ -136,6 +136,10 @@ func (m *Manager) Reserve(ctx context.Context, estimate Estimate) (Reservation, 
 	if exceeds(projected.InputTokens, m.limits.MaxInputTokens) || exceeds(projected.OutputTokens, m.limits.MaxOutputTokens) || exceeds(projected.ReasoningTokens, m.limits.MaxReasoningTokens) || exceeds(projected.CachedTokens, m.limits.MaxCachedTokens) || exceeds(projected.Requests, m.limits.MaxRequests) {
 		return Reservation{}, fmt.Errorf("%w: token or request quota", ErrHardLimit)
 	}
+	previousPhase := m.phase
+	previousNextID := m.nextID
+	previousAccount := m.account
+	previousProviders := cloneAccounts(m.providers)
 	if estimate.Provider != "" {
 		providerAccount := m.providerAccount(estimate.Provider)
 		providerProjected := add(providerAccount.confirmed, providerAccount.uncertain, providerAccount.reserved, usage)
@@ -148,11 +152,9 @@ func (m *Manager) Reserve(ctx context.Context, estimate Estimate) (Reservation, 
 	m.nextID++
 	reservation := Reservation{id: fmt.Sprintf("reservation-%d", m.nextID), manager: m, estimate: estimate}
 	m.reservations[reservation.id] = estimate
-	m.account.reserved = add(m.account.reserved, usage)
-	if estimate.Provider != "" {
-		providerAccount := m.providerAccount(estimate.Provider)
-		providerAccount.reserved = add(providerAccount.reserved, usage)
-	}
+	m.applyAccountMutation(estimate.Provider, func(account *account) {
+		account.reserved = add(account.reserved, usage)
+	})
 	if !estimate.Finalization && m.limits.SoftCostMicros > 0 && projected.CostMicros >= m.limits.SoftCostMicros {
 		m.phase = PhaseFinalizing
 	}
@@ -160,6 +162,11 @@ func (m *Manager) Reserve(ctx context.Context, estimate Estimate) (Reservation, 
 		m.phase = PhaseFinalizing
 	}
 	if err := m.persistLocked(); err != nil {
+		delete(m.reservations, reservation.id)
+		m.phase = previousPhase
+		m.nextID = previousNextID
+		m.account = previousAccount
+		m.providers = previousProviders
 		return Reservation{}, err
 	}
 	return reservation, nil
@@ -188,30 +195,34 @@ func (m *Manager) settle(reservation Reservation, actual *Usage, uncertain bool)
 	if !ok {
 		return ErrReservationClosed
 	}
+	previousPhase := m.phase
+	previousAccount := m.account
+	previousProviders := cloneAccounts(m.providers)
 	delete(m.reservations, reservation.id)
 	estimate := storedEstimate.usage()
-	m.account.reserved = subtract(m.account.reserved, estimate)
-	if reservation.estimate.Provider != "" {
-		providerAccount := m.providerAccount(reservation.estimate.Provider)
-		providerAccount.reserved = subtract(providerAccount.reserved, estimate)
-	}
+	m.applyAccountMutation(reservation.estimate.Provider, func(account *account) {
+		account.reserved = subtract(account.reserved, estimate)
+	})
 	if actual != nil {
-		m.account.confirmed = add(m.account.confirmed, *actual)
-		if reservation.estimate.Provider != "" {
-			providerAccount := m.providerAccount(reservation.estimate.Provider)
-			providerAccount.confirmed = add(providerAccount.confirmed, *actual)
-		}
+		m.applyAccountMutation(reservation.estimate.Provider, func(account *account) {
+			account.confirmed = add(account.confirmed, *actual)
+		})
 	} else if uncertain {
-		m.account.uncertain = add(m.account.uncertain, estimate)
-		if reservation.estimate.Provider != "" {
-			providerAccount := m.providerAccount(reservation.estimate.Provider)
-			providerAccount.uncertain = add(providerAccount.uncertain, estimate)
-		}
+		m.applyAccountMutation(reservation.estimate.Provider, func(account *account) {
+			account.uncertain = add(account.uncertain, estimate)
+		})
 	}
 	if m.limits.SoftCostMicros > 0 && add(m.account.confirmed, m.account.uncertain, m.account.reserved).CostMicros >= m.limits.SoftCostMicros {
 		m.phase = PhaseFinalizing
 	}
-	return m.persistLocked()
+	if err := m.persistLocked(); err != nil {
+		m.reservations[reservation.id] = storedEstimate
+		m.phase = previousPhase
+		m.account = previousAccount
+		m.providers = previousProviders
+		return err
+	}
+	return nil
 }
 
 func (m *Manager) Finalize() error {
@@ -236,13 +247,25 @@ func (m *Manager) RestoreStatus(status Status) {
 	for name, restored := range status.Providers {
 		m.providers[name] = &account{confirmed: restored.Confirmed, uncertain: restored.Uncertain, reserved: restored.Reserved}
 	}
+	missingProviderReserved := map[string]Usage{}
+	for _, reservation := range status.OpenReservations {
+		provider := reservation.Estimate.Provider
+		if provider == "" {
+			continue
+		}
+		if _, ok := m.providers[provider]; !ok {
+			missingProviderReserved[provider] = add(missingProviderReserved[provider], reservation.Estimate.usage())
+		}
+	}
+	for provider, reserved := range missingProviderReserved {
+		m.providers[provider] = &account{reserved: reserved}
+	}
 	for _, reservation := range status.OpenReservations {
 		estimate := reservation.Estimate.usage()
-		m.account.uncertain = add(m.account.uncertain, estimate)
-		if reservation.Estimate.Provider != "" {
-			providerAccount := m.providerAccount(reservation.Estimate.Provider)
-			providerAccount.uncertain = add(providerAccount.uncertain, estimate)
-		}
+		m.applyAccountMutation(reservation.Estimate.Provider, func(account *account) {
+			account.reserved = subtract(account.reserved, estimate)
+			account.uncertain = add(account.uncertain, estimate)
+		})
 		m.nextID++
 	}
 	m.reservations = map[string]Estimate{}
@@ -276,6 +299,22 @@ func (m *Manager) statusLocked() Status {
 	}
 	sort.Slice(status.OpenReservations, func(i, j int) bool { return status.OpenReservations[i].ID < status.OpenReservations[j].ID })
 	return status
+}
+
+func (m *Manager) applyAccountMutation(provider string, mutation func(*account)) {
+	mutation(&m.account)
+	if provider != "" {
+		mutation(m.providerAccount(provider))
+	}
+}
+
+func cloneAccounts(accounts map[string]*account) map[string]*account {
+	cloned := make(map[string]*account, len(accounts))
+	for name, account := range accounts {
+		clonedAccount := *account
+		cloned[name] = &clonedAccount
+	}
+	return cloned
 }
 
 func (m *Manager) providerAccount(provider string) *account {

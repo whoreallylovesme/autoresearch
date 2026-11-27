@@ -26,27 +26,14 @@ func TestDaemonAndCLICompleteCredentialFreeResearch(t *testing.T) {
 	build(t, root, daemon, "./cmd/researchd")
 	build(t, root, control, "./cmd/researchctl")
 	address := freeAddress(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	command := exec.CommandContext(ctx, daemon, "--config", filepath.Join(root, "configs", "autoresearch.yaml"), "--listen", address, "--data-dir", filepath.Join(binDir, "private-data"))
-	command.Dir = root
-	var daemonLogs strings.Builder
-	command.Stdout = &daemonLogs
-	command.Stderr = &daemonLogs
-	if err := command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		_ = command.Process.Kill()
-		_, _ = command.Process.Wait()
-	}()
-	baseURL := "http://" + address
-	waitForDaemon(t, baseURL)
+	daemonProcess := startResearchDaemon(t, root, daemon, filepath.Join(binDir, "private-data"), address)
+	daemonProcess.waitReady(t)
+	baseURL := daemonProcess.baseURL
 	runCtx, runCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer runCancel()
 	output, err := exec.CommandContext(runCtx, control, "run", "--config", filepath.Join(root, "configs", "autoresearch.yaml"), "--api", baseURL).CombinedOutput()
 	if err != nil {
-		t.Fatalf("researchctl run error = %v\noutput = %s\ndaemon = %s", err, output, daemonLogs.String())
+		t.Fatalf("researchctl run error = %v\noutput = %s\ndaemon = %s", err, output, daemonProcess.logs.String())
 	}
 	if !strings.Contains(string(output), "Research Report") || !strings.Contains(string(output), "research-a") {
 		t.Fatalf("run output = %s", output)

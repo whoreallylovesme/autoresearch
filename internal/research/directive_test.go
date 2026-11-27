@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/whoreallylovesme/autoresearch/internal/config"
+	"github.com/whoreallylovesme/autoresearch/internal/provider"
 	"github.com/whoreallylovesme/autoresearch/internal/scheduler"
 )
 
@@ -33,5 +35,30 @@ func TestOperatorDirectiveReprioritizesAndCancelsTasks(t *testing.T) {
 	task, _ := runtime.scheduler.Get("b")
 	if task.State != scheduler.StateCancelled {
 		t.Fatalf("task = %#v", task)
+	}
+}
+
+func TestOrdinaryOperatorChatResponseKeepsRequestRunID(t *testing.T) {
+	var runtime *Runtime
+	runtime, err := New(loadConfigForDirective(t), func(_ string, _ config.AgentConfig) (provider.Provider, error) {
+		return provider.NewMockHandler(func(context.Context, provider.Request) (provider.Response, error) {
+			runtime.mu.Lock()
+			runtime.status.ID = "changed-run-id"
+			runtime.mu.Unlock()
+			return provider.Response{Content: "operator response"}, nil
+		}), nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.Chat(context.Background(), "Explain current research state", false); err != nil {
+		t.Fatal(err)
+	}
+	messages := runtime.Messages()
+	if len(messages) != 2 {
+		t.Fatalf("messages = %#v", messages)
+	}
+	if messages[1].RunID != messages[0].RunID {
+		t.Fatalf("response run ID = %q, request run ID = %q", messages[1].RunID, messages[0].RunID)
 	}
 }

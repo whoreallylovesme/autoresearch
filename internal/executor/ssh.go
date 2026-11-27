@@ -13,7 +13,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -70,7 +69,7 @@ func NewSSH(options SSHOptions) (*SSHExecutor, error) {
 }
 
 func (s *SSHExecutor) Submit(ctx context.Context, job Job) error {
-	if !regexp.MustCompile(`^[A-Za-z0-9._-]{1,96}$`).MatchString(job.ID) || len(job.Command) == 0 {
+	if !validJobID(job.ID) || len(job.Command) == 0 {
 		return errors.New("valid job ID and command are required")
 	}
 	workspace, err := s.localWorkspace(job.Workspace)
@@ -235,8 +234,7 @@ func (s *SSHExecutor) Collect(ctx context.Context, id string) ([]artifact.Record
 	}
 	defer reader.Close()
 	archive := tar.NewReader(reader)
-	var records []artifact.Record
-	var total int64
+	collection := artifactCollection{store: s.options.Artifacts, runID: process.job.RunID}
 	for {
 		header, err := archive.Next()
 		if errors.Is(err, io.EOF) {
@@ -252,21 +250,16 @@ func (s *SSHExecutor) Collect(ctx context.Context, id string) ([]artifact.Record
 		if header.FileInfo().IsDir() {
 			continue
 		}
-		if !header.FileInfo().Mode().IsRegular() || header.Size > 16<<20 || total+header.Size > 64<<20 || len(records) >= 20 {
-			return nil, errors.New("remote artifact type, count, or size is invalid")
+		if !header.FileInfo().Mode().IsRegular() {
+			return nil, errors.New("remote artifact type is invalid")
 		}
-		data, err := io.ReadAll(io.LimitReader(archive, header.Size+1))
-		if err != nil {
+		if err := collection.put(ctx, clean, header.Size, func() ([]byte, error) {
+			return io.ReadAll(io.LimitReader(archive, header.Size+1))
+		}); err != nil {
 			return nil, err
 		}
-		record, err := s.options.Artifacts.Put(ctx, process.job.RunID, clean, "application/octet-stream", data)
-		if err != nil {
-			return nil, err
-		}
-		total += header.Size
-		records = append(records, record)
 	}
-	return records, nil
+	return collection.records, nil
 }
 
 func (s *SSHExecutor) refresh(ctx context.Context, process *sshProcess) error {

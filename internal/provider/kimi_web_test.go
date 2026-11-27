@@ -161,11 +161,8 @@ func TestKimiWebCreatesIndependentSessionPerAgent(t *testing.T) {
 func TestKimiWebRejectsUnverifiedToolResponse(t *testing.T) {
 	server := newNativeServer(t, `not a runtime response`, false)
 	defer server.Close()
-	client, err := provider.NewKimiWeb(provider.KimiWebOptions{BaseURL: server.URL, Token: "test-token", AgentID: "worker-1", Workspace: t.TempDir(), HTTPClient: server.Client()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = client.Generate(context.Background(), provider.Request{IdempotencyKey: "task-1", Tools: []provider.ToolDefinition{{Name: "query_knowledge"}}})
+	client := newNativeClient(t, server)
+	_, err := client.Generate(context.Background(), provider.Request{IdempotencyKey: "task-1", Tools: []provider.ToolDefinition{{Name: "query_knowledge"}}})
 	if err == nil || !strings.Contains(err.Error(), "runtime response") {
 		t.Fatalf("unstructured tool response error = %v", err)
 	}
@@ -174,11 +171,8 @@ func TestKimiWebRejectsUnverifiedToolResponse(t *testing.T) {
 func TestKimiWebDoesNotApproveNativeInteractions(t *testing.T) {
 	server := newNativeServer(t, `{"final_response":"must not be accepted"}`, true)
 	defer server.Close()
-	client, err := provider.NewKimiWeb(provider.KimiWebOptions{BaseURL: server.URL, Token: "test-token", AgentID: "worker-1", Workspace: t.TempDir(), HTTPClient: server.Client()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = client.Generate(context.Background(), provider.Request{IdempotencyKey: "task-1"})
+	client := newNativeClient(t, server)
+	_, err := client.Generate(context.Background(), provider.Request{IdempotencyKey: "task-1"})
 	if err == nil || !strings.Contains(err.Error(), "approval") || strings.Contains(err.Error(), "test-token") {
 		t.Fatalf("pending interaction error = %v", err)
 	}
@@ -213,13 +207,10 @@ func TestKimiWebCancellationCancelsNativeTurn(t *testing.T) {
 	}))
 	cancelled = make(chan struct{})
 	defer server.Close()
-	client, err := provider.NewKimiWeb(provider.KimiWebOptions{BaseURL: server.URL, Token: "test-token", AgentID: "worker-1", Workspace: t.TempDir(), HTTPClient: server.Client()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := newNativeClient(t, server)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 	defer cancel()
-	_, err = client.Generate(ctx, provider.Request{IdempotencyKey: "task-1"})
+	_, err := client.Generate(ctx, provider.Request{IdempotencyKey: "task-1"})
 	if err == nil || ctx.Err() == nil {
 		t.Fatalf("cancellation error = %v, context = %v", err, ctx.Err())
 	}
@@ -233,11 +224,8 @@ func TestKimiWebCancellationCancelsNativeTurn(t *testing.T) {
 func TestKimiWebRejectsTrailingRuntimeData(t *testing.T) {
 	server := newNativeServer(t, `{"final_response":"unverified"} trailing-data`, false)
 	defer server.Close()
-	client, err := provider.NewKimiWeb(provider.KimiWebOptions{BaseURL: server.URL, Token: "test-token", AgentID: "worker-1", Workspace: t.TempDir(), HTTPClient: server.Client()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = client.Generate(context.Background(), provider.Request{IdempotencyKey: "task-1", Tools: []provider.ToolDefinition{{Name: "query_knowledge"}}})
+	client := newNativeClient(t, server)
+	_, err := client.Generate(context.Background(), provider.Request{IdempotencyKey: "task-1", Tools: []provider.ToolDefinition{{Name: "query_knowledge"}}})
 	if err == nil || !strings.Contains(err.Error(), "runtime response") {
 		t.Fatalf("trailing response data error = %v", err)
 	}
@@ -246,14 +234,20 @@ func TestKimiWebRejectsTrailingRuntimeData(t *testing.T) {
 func TestKimiWebRetriesTransientServerFailure(t *testing.T) {
 	server := newNativeServer(t, `{"final_response":"recovered"}`, false, 1)
 	defer server.Close()
-	client, err := provider.NewKimiWeb(provider.KimiWebOptions{BaseURL: server.URL, Token: "test-token", AgentID: "worker-1", Workspace: t.TempDir(), HTTPClient: server.Client()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := newNativeClient(t, server)
 	response, err := client.Generate(context.Background(), provider.Request{IdempotencyKey: "task-1", Tools: []provider.ToolDefinition{{Name: "query_knowledge"}}})
 	if err != nil || response.Content != "recovered" {
 		t.Fatalf("retry response = %#v, %v", response, err)
 	}
+}
+
+func newNativeClient(t *testing.T, server *httptest.Server) *provider.KimiWebProvider {
+	t.Helper()
+	client, err := provider.NewKimiWeb(provider.KimiWebOptions{BaseURL: server.URL, Token: "test-token", AgentID: "worker-1", Workspace: t.TempDir(), HTTPClient: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return client
 }
 
 func newNativeServer(t *testing.T, response string, pending bool, waitFailures ...int) *httptest.Server {

@@ -64,7 +64,7 @@ func (d *DockerExecutor) Submit(ctx context.Context, job Job) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if !regexp.MustCompile(`^[A-Za-z0-9._-]{1,96}$`).MatchString(job.ID) || len(job.Command) == 0 || !slices.Contains(d.images, job.Image) {
+	if !validJobID(job.ID) || len(job.Command) == 0 || !slices.Contains(d.images, job.Image) {
 		return errors.New("invalid job ID, command, or image")
 	}
 	if job.Timeout <= 0 {
@@ -264,8 +264,7 @@ func (d *DockerExecutor) Collect(ctx context.Context, id string) ([]artifact.Rec
 	if _, err := os.Stat(output); errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}
-	var records []artifact.Record
-	var total int64
+	collection := artifactCollection{store: d.artifacts, runID: process.job.RunID}
 	err = filepath.WalkDir(output, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -276,17 +275,7 @@ func (d *DockerExecutor) Collect(ctx context.Context, id string) ([]artifact.Rec
 		if entry.IsDir() {
 			return nil
 		}
-		if len(records) >= 20 {
-			return errors.New("too many artifacts")
-		}
 		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		if info.Size() > 16<<20 || total+info.Size() > 64<<20 {
-			return errors.New("artifact size limit exceeded")
-		}
-		content, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -294,15 +283,11 @@ func (d *DockerExecutor) Collect(ctx context.Context, id string) ([]artifact.Rec
 		if err != nil {
 			return err
 		}
-		record, err := d.artifacts.Put(ctx, process.job.RunID, relative, "application/octet-stream", content)
-		if err != nil {
-			return err
-		}
-		total += info.Size()
-		records = append(records, record)
-		return nil
+		return collection.put(ctx, relative, info.Size(), func() ([]byte, error) {
+			return os.ReadFile(path)
+		})
 	})
-	return records, err
+	return collection.records, err
 }
 
 func (d *DockerExecutor) process(id string) (*dockerProcess, error) {

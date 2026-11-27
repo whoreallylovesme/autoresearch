@@ -3,8 +3,6 @@ package provider
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/whoreallylovesme/autoresearch/internal/id"
 )
 
 type KimiWebOptions struct {
@@ -107,22 +107,20 @@ func NewKimiWeb(options KimiWebOptions) (*KimiWebProvider, error) {
 			return nil, errors.New("Kimi Web streaming and generic structured outputs are unsupported")
 		}
 		capabilities.Tools = options.Capabilities.Tools
-		capabilities.ReasoningEfforts = append([]string(nil), options.Capabilities.ReasoningEfforts...)
+		capabilities.ReasoningEfforts = options.Capabilities.ReasoningEfforts
 		if len(options.Capabilities.SupportedParameters) > 0 {
-			capabilities.SupportedParameters = append([]string(nil), options.Capabilities.SupportedParameters...)
+			capabilities.SupportedParameters = options.Capabilities.SupportedParameters
 		}
 	}
-	if options.Retry.MaxAttempts == 0 {
-		options.Retry.MaxAttempts = 3
-	}
-	if options.Retry.MaxAttempts < 1 || options.Retry.InitialBackoff < 0 || options.Retry.MaxBackoff < options.Retry.InitialBackoff {
-		return nil, errors.New("invalid Kimi Web retry policy")
+	retry, err := normalizeRetryPolicy(options.Retry, "Kimi Web")
+	if err != nil {
+		return nil, err
 	}
 	return &KimiWebProvider{
 		model: options.Model, baseURL: parsed.String(), token: options.Token, agentID: options.AgentID,
 		workspace: filepath.Join(options.Workspace, options.AgentID), profile: options.Profile,
 		permissionMode: options.PermissionMode, client: options.HTTPClient, limiter: options.Limiter,
-		retry: options.Retry, capabilities: capabilities, generate: make(chan struct{}, 1),
+		retry: retry, capabilities: cloneCapabilities(capabilities), generate: make(chan struct{}, 1),
 	}, nil
 }
 
@@ -175,32 +173,9 @@ func (p *KimiWebProvider) Generate(ctx context.Context, request Request) (Respon
 	case <-ctx.Done():
 		return Response{}, ctx.Err()
 	}
-	var response Response
-	var err error
-	for attempt := 0; attempt < p.retry.MaxAttempts; attempt++ {
-		response, err = p.generateOnce(ctx, request)
-		if err == nil {
-			return response, nil
-		}
-		if ctx.Err() != nil {
-			return Response{}, ctx.Err()
-		}
-		if !retryable(err) || attempt == p.retry.MaxAttempts-1 {
-			return Response{}, err
-		}
-		backoff := p.retry.InitialBackoff << attempt
-		if backoff > p.retry.MaxBackoff {
-			backoff = p.retry.MaxBackoff
-		}
-		timer := time.NewTimer(backoff)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return Response{}, ctx.Err()
-		case <-timer.C:
-		}
-	}
-	return Response{}, err
+	return generateWithRetry(ctx, p.retry, func(ctx context.Context) (Response, error) {
+		return p.generateOnce(ctx, request)
+	})
 }
 
 func (p *KimiWebProvider) generateOnce(ctx context.Context, request Request) (Response, error) {
@@ -209,7 +184,7 @@ func (p *KimiWebProvider) generateOnce(ctx context.Context, request Request) (Re
 	}
 	promptID := request.IdempotencyKey
 	if promptID == "" {
-		promptID = randomKimiWebID()
+		promptID = id.MustNew()
 	}
 	prompt, err := p.nextPrompt(request)
 	if err != nil {
@@ -451,10 +426,7 @@ func (p *KimiWebProvider) Stream(context.Context, Request) (<-chan Event, error)
 }
 
 func (p *KimiWebProvider) Capabilities() Capabilities {
-	capabilities := p.capabilities
-	capabilities.SupportedParameters = append([]string(nil), p.capabilities.SupportedParameters...)
-	capabilities.ReasoningEfforts = append([]string(nil), p.capabilities.ReasoningEfforts...)
-	return capabilities
+	return cloneCapabilities(p.capabilities)
 }
 
 func (p *KimiWebProvider) doJSON(ctx context.Context, method, path string, input, output any) error {
@@ -529,12 +501,4 @@ func cloneKimiWebMessages(messages []Message) []Message {
 		result[index].ToolCalls = append([]ToolCall(nil), messages[index].ToolCalls...)
 	}
 	return result
-}
-
-func randomKimiWebID() string {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(bytes)
 }

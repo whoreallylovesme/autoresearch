@@ -3,7 +3,6 @@ package research_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -20,41 +19,20 @@ func TestOpenAIChiefWithSeparateKimiWorkers(t *testing.T) {
 	t.Setenv("TEST_KIMI_KEY", "kimi-test-secret")
 	var chiefCalls atomic.Int32
 	var workerCalls atomic.Int32
-	chiefServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.Header.Get("Authorization") != "Bearer openai-test-secret" {
-			t.Error("incorrect OpenAI credential")
-		}
-		chiefCalls.Add(1)
-		var body provider.Request
-		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
-			t.Error(err)
-		}
-		steps := 0
-		for _, message := range body.Messages {
-			if message.Role == "assistant" && len(message.ToolCalls) > 0 {
-				steps++
-			}
-		}
-		writer.Header().Set("Content-Type", "application/json")
-		if steps >= 5 {
-			_ = json.NewEncoder(writer).Encode(map[string]any{"id": "openai-final", "choices": []any{map[string]any{"message": map[string]any{"role": "assistant", "content": "OpenAI Chief Scientist final report"}}}, "usage": map[string]any{"prompt_tokens": 10, "completion_tokens": 5}})
-			return
-		}
-		var call provider.ToolCall
-		switch steps {
-		case 0:
-			call = provider.ToolCall{ID: "openai-a", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"research-a","title":"Research A","description":"Investigate deterministic scheduling","role":"baby-scientist","priority":10,"idempotency_key":"chief-research-a"}`)}
-		case 1:
-			call = provider.ToolCall{ID: "openai-b", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"research-b","title":"Research B","description":"Investigate explicit dependencies","role":"baby-scientist","priority":9,"idempotency_key":"chief-research-b"}`)}
-		case 2:
-			call = provider.ToolCall{ID: "openai-critic", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"critic-review","title":"Independent review","description":"Review both findings","role":"critic","dependencies":["research-a","research-b"],"idempotency_key":"chief-critic"}`)}
-		case 3:
-			call = provider.ToolCall{ID: "openai-query", Name: "query_knowledge", Arguments: json.RawMessage(`{"query":"all findings","wait_for_tasks":true}`)}
-		case 4:
-			call = provider.ToolCall{ID: "openai-finalize", Name: "finalize_research", Arguments: json.RawMessage(`{}`)}
-		}
-		_ = json.NewEncoder(writer).Encode(map[string]any{"id": fmt.Sprintf("openai-%d", steps), "choices": []any{map[string]any{"finish_reason": "tool_calls", "message": map[string]any{"role": "assistant", "content": nil, "tool_calls": []any{map[string]any{"id": call.ID, "type": "function", "function": map[string]any{"name": call.Name, "arguments": string(call.Arguments)}}}}}}, "usage": map[string]any{"prompt_tokens": 10, "completion_tokens": 5}})
-	}))
+	chiefServer := newScriptedChief(t, scriptedChiefConfig{
+		credential:    "openai-test-secret",
+		calls:         &chiefCalls,
+		idPrefix:      "openai",
+		finalID:       "openai-final",
+		finalResponse: "OpenAI Chief Scientist final report",
+		script: []provider.ToolCall{
+			{ID: "openai-a", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"research-a","title":"Research A","description":"Investigate deterministic scheduling","role":"baby-scientist","priority":10,"idempotency_key":"chief-research-a"}`)},
+			{ID: "openai-b", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"research-b","title":"Research B","description":"Investigate explicit dependencies","role":"baby-scientist","priority":9,"idempotency_key":"chief-research-b"}`)},
+			{ID: "openai-critic", Name: "delegate_task", Arguments: json.RawMessage(`{"task_id":"critic-review","title":"Independent review","description":"Review both findings","role":"critic","dependencies":["research-a","research-b"],"idempotency_key":"chief-critic"}`)},
+			{ID: "openai-query", Name: "query_knowledge", Arguments: json.RawMessage(`{"query":"all findings","wait_for_tasks":true}`)},
+			{ID: "openai-finalize", Name: "finalize_research", Arguments: json.RawMessage(`{}`)},
+		},
+	})
 	defer chiefServer.Close()
 	workerServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.Header.Get("Authorization") != "Bearer kimi-test-secret" {

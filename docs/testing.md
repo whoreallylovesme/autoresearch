@@ -2,6 +2,8 @@
 
 All tests run without paid APIs or GPUs. Deterministic mock providers and executors control timing, failures, and outputs. Concurrency-sensitive Go packages use the race detector.
 
+Go package tests live beside their source in `*_test.go` files; they are excluded from production binaries. Use `package foo_test` to exercise the public contract and `package foo` only for intentional internal white-box coverage. The top-level `tests/` directory is reserved for cross-package, subprocess, daemon-recovery, local-model, and real-service integration tests.
+
 ## Commands
 
 ```bash
@@ -19,6 +21,7 @@ make web-lint
 make web-test
 make browser-test
 make compose-test
+make native-kimi-test
 ```
 
 The canonical CI workflow runs `go vet`, `go test -race -shuffle=on ./...`, integration tests, Python Ruff checks, and pytest when those components exist.
@@ -38,6 +41,7 @@ The canonical CI workflow runs `go vet`, `go test -race -shuffle=on ./...`, inte
 - API contracts and Python control-center behavior.
 - Headless Chromium acceptance for live events, graph, Plotly, experiments, fleet links, and persistent chat.
 - Docker Compose config/build/start smoke and an actual research run through the published API.
+- Real native Kimi session/workspace isolation and private token handoff without OAuth or model prompts.
 
 ## Integration recovery test
 

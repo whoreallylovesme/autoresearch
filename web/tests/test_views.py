@@ -31,6 +31,51 @@ def test_graph_elements_and_hypothesis_counts():
     assert hypothesis_counts(snapshot) == {"proposed": 0, "verified": 1, "refuted": 1}
 
 
+def test_graph_elements_normalizes_descriptions_and_edge_defaults():
+    snapshot = {
+        "nodes": [
+            {"id": "missing"},
+            {"id": "empty", "description": ""},
+        ],
+        "edges": [{"id": "e1", "from_node": "missing", "to_node": "empty"}],
+    }
+
+    assert graph_elements(snapshot) == [
+        {
+            "group": "nodes",
+            "data": {
+                "id": "missing",
+                "label": "missing",
+                "type": "unknown",
+                "status": "unknown",
+                "author": "unknown",
+                "created_at": "",
+                "revision": 1,
+                "description": "",
+            },
+            "classes": "unknown status-unknown",
+        },
+        {
+            "group": "nodes",
+            "data": {
+                "id": "empty",
+                "label": "empty",
+                "type": "unknown",
+                "status": "unknown",
+                "author": "unknown",
+                "created_at": "",
+                "revision": 1,
+                "description": "",
+            },
+            "classes": "unknown status-unknown",
+        },
+        {
+            "group": "edges",
+            "data": {"id": "e1", "source": "missing", "target": "empty", "label": "related"},
+        },
+    ]
+
+
 def test_budget_figure_uses_confirmed_reserved_and_uncertain():
     status = {
         "confirmed": {"cost_micros": 40},

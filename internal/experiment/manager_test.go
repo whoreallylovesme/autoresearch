@@ -3,13 +3,13 @@ package experiment_test
 import (
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/whoreallylovesme/autoresearch/internal/artifact"
 	"github.com/whoreallylovesme/autoresearch/internal/executor"
+	"github.com/whoreallylovesme/autoresearch/internal/executor/executortest"
 	"github.com/whoreallylovesme/autoresearch/internal/experiment"
 	"github.com/whoreallylovesme/autoresearch/internal/storage"
 	"github.com/whoreallylovesme/autoresearch/internal/verifier"
@@ -18,7 +18,7 @@ import (
 const testImage = "python@sha256:191083cdf6c7bda8c76158983163ead5d5cf7b77cf3033e805bb0f5296f51b4b"
 
 func TestExperimentLifecyclePersistsVerifiedReproducibilityRecord(t *testing.T) {
-	requireDocker(t)
+	executortest.RequireDaemon(t)
 	sqlite, runner, _, workspace := setupExperiment(t, "verified")
 	defer sqlite.Close()
 	store := experiment.New(sqlite, runner, verifier.Benchmark{Metric: "answer", Direction: "min", Threshold: 6})
@@ -41,7 +41,7 @@ func TestExperimentLifecyclePersistsVerifiedReproducibilityRecord(t *testing.T) 
 }
 
 func TestExperimentPersistsRefutedResult(t *testing.T) {
-	requireDocker(t)
+	executortest.RequireDaemon(t)
 	sqlite, runner, _, workspace := setupExperiment(t, "refuted")
 	defer sqlite.Close()
 	store := experiment.New(sqlite, runner, verifier.Benchmark{Metric: "answer", Direction: "min", Threshold: 7})
@@ -84,16 +84,4 @@ func setupExperiment(t *testing.T, id string) (*storage.SQLite, *executor.Docker
 		t.Fatal(err)
 	}
 	return sqlite, runner, artifacts, workspace
-}
-
-func requireDocker(t *testing.T) {
-	t.Helper()
-	if _, err := exec.LookPath("docker"); err != nil {
-		t.Skip("Docker unavailable")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := exec.CommandContext(ctx, "docker", "info", "--format", "{{.ServerVersion}}").Run(); err != nil {
-		t.Skip("Docker daemon unavailable")
-	}
 }

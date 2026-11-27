@@ -5,6 +5,7 @@ AutoResearch is a Go scientific-agent runtime with a Python/NiceGUI control cent
 ## Toolchain
 
 - Go 1.24, Cobra for CLI commands, SQLite migrations, and standard `go test` with the race detector.
+- Keep Go package tests beside the source as `*_test.go`. Use an external `foo_test` package for public-contract tests and the same package only when testing unexported behavior. Reserve top-level `tests/` for process, multi-package, and real-service integration tests.
 - Python dependencies are managed only with `uv` using `web/pyproject.toml` and the committed `web/uv.lock`. Do not add requirements files.
 - Docker Compose deployment is in `deploy/`; container images and the local GGUF model are pinned. Do not mount the host Docker socket into agent workloads.
 - Use the repository Makefile rather than inventing parallel build or test commands.

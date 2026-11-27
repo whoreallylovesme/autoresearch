@@ -59,6 +59,12 @@ type Capabilities struct {
 	ReasoningEfforts    []string
 }
 
+func cloneCapabilities(capabilities Capabilities) Capabilities {
+	capabilities.SupportedParameters = append([]string(nil), capabilities.SupportedParameters...)
+	capabilities.ReasoningEfforts = append([]string(nil), capabilities.ReasoningEfforts...)
+	return capabilities
+}
+
 type EventType string
 
 const (

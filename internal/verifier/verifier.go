@@ -2,8 +2,6 @@ package verifier
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +12,7 @@ import (
 
 	"github.com/whoreallylovesme/autoresearch/internal/artifact"
 	"github.com/whoreallylovesme/autoresearch/internal/executor"
+	"github.com/whoreallylovesme/autoresearch/internal/id"
 )
 
 type Request struct {
@@ -47,7 +46,7 @@ type Benchmark struct {
 }
 
 func (b Benchmark) Verify(ctx context.Context, request Request) (Verification, error) {
-	result := Verification{ID: verificationID(), ExperimentID: request.ExperimentID, Type: "benchmark", Metrics: map[string]float64{}, ArtifactIDs: artifactIDs(request.Artifacts), CreatedAt: time.Now().UTC()}
+	result := Verification{ID: id.MustNew(), ExperimentID: request.ExperimentID, Type: "benchmark", Metrics: map[string]float64{}, ArtifactIDs: artifactIDs(request.Artifacts), CreatedAt: time.Now().UTC()}
 	if b.Metric == "" || (b.Direction != "min" && b.Direction != "max") || math.IsNaN(b.Threshold) || math.IsInf(b.Threshold, 0) {
 		return result, errors.New("benchmark requires a metric, finite threshold, and min/max direction")
 	}
@@ -82,7 +81,7 @@ type CustomCommand struct {
 }
 
 func (c CustomCommand) Verify(ctx context.Context, request Request) (Verification, error) {
-	result := Verification{ID: verificationID(), ExperimentID: request.ExperimentID, Type: "custom-command", Command: append([]string(nil), c.Command...), ArtifactIDs: artifactIDs(request.Artifacts), CreatedAt: time.Now().UTC()}
+	result := Verification{ID: id.MustNew(), ExperimentID: request.ExperimentID, Type: "custom-command", Command: append([]string(nil), c.Command...), ArtifactIDs: artifactIDs(request.Artifacts), CreatedAt: time.Now().UTC()}
 	if c.Executor == nil || len(c.Command) == 0 {
 		return result, errors.New("custom command verifier requires an executor and command")
 	}
@@ -117,12 +116,4 @@ func artifactIDs(records []artifact.Record) []string {
 		ids = append(ids, record.ID)
 	}
 	return ids
-}
-
-func verificationID() string {
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		panic(err)
-	}
-	return hex.EncodeToString(bytes)
 }

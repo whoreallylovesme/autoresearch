@@ -34,7 +34,7 @@ def graph_elements(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
                 "group": "nodes",
                 "data": {
                     "id": node["id"],
-                    "label": node.get("description", node["id"])[:42],
+                    "label": (node.get("description") or node["id"])[:42],
                     "type": node.get("type", "unknown"),
                     "status": node.get("status", "unknown"),
                     "author": node.get("author", "unknown"),

@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/whoreallylovesme/autoresearch/internal/knowledge"
+	"github.com/whoreallylovesme/autoresearch/internal/ratelimit"
 )
 
 type Source interface {
@@ -23,8 +23,7 @@ type Source interface {
 type ArxivSource struct {
 	client      *http.Client
 	baseURL     string
-	mu          sync.Mutex
-	nextRequest time.Time
+	pacer       ratelimit.Pacer
 	MinInterval time.Duration
 }
 
@@ -112,26 +111,11 @@ func (s *ArxivSource) Search(ctx context.Context, query string, limit int) ([]kn
 }
 
 func (s *ArxivSource) wait(ctx context.Context) error {
-	s.mu.Lock()
-	now := time.Now()
-	if s.nextRequest.Before(now) {
-		s.nextRequest = now
-	}
-	reserved := s.nextRequest
 	interval := s.MinInterval
 	if interval <= 0 {
 		interval = 3 * time.Second
 	}
-	s.nextRequest = s.nextRequest.Add(interval)
-	s.mu.Unlock()
-	timer := time.NewTimer(time.Until(reserved))
-	defer timer.Stop()
-	select {
-	case <-timer.C:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return s.pacer.Wait(ctx, interval)
 }
 
 type atomFeed struct {

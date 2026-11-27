@@ -32,6 +32,11 @@ async def runtime_graph() -> JSONResponse:
     return JSONResponse(await runtime.get("graph"))
 
 
+@app.get("/internal/graph/elements")
+async def internal_graph_elements() -> JSONResponse:
+    return JSONResponse(graph_elements(await runtime.get("graph")))
+
+
 @app.get("/runtime/events/stream")
 async def runtime_events(request: Request) -> StreamingResponse:
     async def stream():
