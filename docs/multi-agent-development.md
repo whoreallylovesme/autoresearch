@@ -53,7 +53,7 @@ There is no project-imposed number of waves or agents. Additional waves are norm
 
 ### Tower missions
 
-Use Tower when repository-level mission tracking, isolated worktrees, review gates, and a stable integration branch are useful. It is experimental and is enabled by the operator with `/tower on`; `/tower status` inspects the current roster and missions.
+Use Tower when repository-level mission tracking, isolated worktrees, review gates, and a stable integration branch are useful. Tower is experimental and off by default: enable it through `/experiments` or `[experimental] tower = true`, restart the process when enabling it at runtime, and then activate the mode with `/tower on`. `/tower status` inspects the current roster and missions. Tower is mutually exclusive with Swarm, Plan, and Goal modes; use separate waves rather than expecting both orchestrators to be active simultaneously.
 
 Run Tower only from a session attached to the actual Git repository on the designated development machine. Do not initialize it in an empty or unrelated local directory. `/tower off` does not stop existing background agents or remove `.tower/` state; cleanup and integration are separate decisions.
 
@@ -61,14 +61,14 @@ Run Tower only from a session attached to the actual Git repository on the desig
 
 The freedom to choose tactics is not an absence of technical limits:
 
-- AgentSwarm requires user-enabled swarm mode. Use `/swarm on` or send `/swarm <task>`; it accepts at most **128 items per call**. Larger programs use additional waves.
-- Tower requires user activation and a Git repository. Its worktree, review, and cleanup boundaries must remain intact.
+- AgentSwarm requires user-enabled swarm mode. Use `/swarm on` or send `/swarm <task>`; it accepts at most **128 total subagents per invocation**. Larger programs use additional waves.
+- Tower requires explicit experimental-feature enablement, user activation, and a Git repository. It is mutually exclusive with Swarm, Plan, and Goal modes. Worktrees isolate writes but are not security sandboxes; Tower workers/reviewers run with Never Ask permissions, and Tower caps their combined running count at 256. Its review, merge, and cleanup boundaries remain process constraints, not security boundaries.
 - Built-in `coder`, `explore`, and `plan` subagents do not recursively dispatch further agents by default. Deeper delegation requires a custom profile with an explicit `subagents` allowlist.
 - Every agent has an isolated context and consumes model resources independently. Provide complete handoff inputs; do not assume it sees the parent conversation.
 - Permission inheritance and tool allowlists continue to apply. Auto permission mode is not a license to bypass provider terms, secret isolation, execution policies, or plan review.
 - Paid API calls and subscription-backed research prompts are not a mechanism for testing agent scale. Development verification uses deterministic mocks and credential-free acceptance tests.
 
-Official product references: [Agents and Sub-Agents](https://www.kimi.com/code/docs/en/kimi-code-cli/customization/agents.html), [Slash Commands](https://www.kimi.com/code/docs/en/kimi-code-cli/reference/slash-commands.html), and [Configuration files](https://moonshotai.github.io/kimi-code/en/configuration/config-files.html).
+Official product references: [Agents and Sub-Agents](https://www.kimi.com/code/docs/en/kimi-code-cli/customization/agents.html), [Slash Commands](https://www.kimi.com/code/docs/en/kimi-code-cli/reference/slash-commands.html), [Tower multi-agent collaboration](https://www.kimi.com/code/docs/en/kimi-code-cli/guides/tower.html), and [Configuration files](https://moonshotai.github.io/kimi-code/en/configuration/config-files.html).
 
 ## Shared-state and integration rules
 

@@ -1,6 +1,6 @@
 # Development Progress
 
-Last updated: 2026-11-26
+Last updated: 2026-11-27
 
 ## Current status
 
@@ -68,4 +68,4 @@ The public repository is `https://github.com/whoreallylovesme/autoresearch`. Dev
 
 ## Contributor multi-agent workflows
 
-Role-based agents, AgentSwarm, Tower, and multi-wave development workflows are explicitly authorized without a repository-specific headcount or workflow-size limit. `AGENTS.md` assigns integration and safety responsibilities; `docs/multi-agent-development.md` documents concrete AutoResearch examples. Platform limits are stated explicitly rather than hidden: swarm mode is user-controlled and capped at 128 items per call, Tower is experimental and user-controlled, and resource/security/verification policies remain mandatory.
+Role-based agents, AgentSwarm, Tower, and multi-wave development workflows are explicitly authorized without a repository-specific headcount or workflow-size limit. `AGENTS.md` assigns integration and safety responsibilities; `docs/multi-agent-development.md` documents concrete AutoResearch examples. Platform limits are stated explicitly rather than hidden: swarm mode is user-controlled and capped at 128 total subagents per invocation, Tower is experimental, explicitly enabled, and mode-exclusive, and resource/security/verification policies remain mandatory.
