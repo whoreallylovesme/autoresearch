@@ -4,10 +4,12 @@ After=network.target researchd.service
 
 [Service]
 Type=simple
+Environment=AUTORESEARCH_OPERATOR_TOKEN_FILE=/etc/autoresearch/operator.token
 WorkingDirectory=/opt/autoresearch/web
 Environment=AUTORESEARCH_API=http://127.0.0.1:8080/api/v1
 Environment=AUTORESEARCH_UI_HOST=127.0.0.1
 Environment=AUTORESEARCH_UI_PORT=8081
+Environment=NICEGUI_STORAGE_PATH=/tmp/nicegui
 ExecStart=/usr/local/bin/uv run --frozen --no-dev --project /opt/autoresearch/web python -m autoresearch_ui.main
 Restart=on-failure
 RestartSec=5

@@ -10,12 +10,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/whoreallylovesme/autoresearch/internal/operatorauth"
 	"github.com/whoreallylovesme/autoresearch/internal/research"
 	"github.com/whoreallylovesme/autoresearch/internal/telemetry"
 )
 
 type Server struct {
 	runtime *research.Runtime
+	token   operatorauth.Token
 	mux     *http.ServeMux
 	runMu   sync.Mutex
 	started bool
@@ -23,8 +25,12 @@ type Server struct {
 	done    chan error
 }
 
-func New(runtime *research.Runtime) *Server {
-	server := &Server{runtime: runtime, mux: http.NewServeMux(), done: make(chan error, 1)}
+func New(runtime *research.Runtime, token operatorauth.Token) (*Server, error) {
+	if !token.Valid() {
+		return nil, errors.New("a valid operator token is required")
+	}
+	server := &Server{runtime: runtime, token: token, mux: http.NewServeMux(), done: make(chan error, 1)}
+	server.mux.HandleFunc("GET /healthz", server.health)
 	server.mux.HandleFunc("POST /api/v1/run/start", server.start)
 	server.mux.HandleFunc("POST /api/v1/run/stop", server.stop)
 	server.mux.HandleFunc("POST /api/v1/run/pause", server.pause)
@@ -44,13 +50,27 @@ func New(runtime *research.Runtime) *Server {
 	server.mux.HandleFunc("GET /api/v1/experiments", server.experiments)
 	server.mux.HandleFunc("GET /api/v1/playback", server.playback)
 	server.mux.HandleFunc("GET /metrics", server.metrics)
-	return server
+	return server, nil
 }
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("X-AutoResearch-API-Version", "1")
 	writer.Header().Set("Traceparent", telemetry.NewTraceparent())
+	if request.Method == http.MethodGet && request.RequestURI == "/healthz" {
+		s.mux.ServeHTTP(writer, request)
+		return
+	}
+	if !s.token.Authorize(request) {
+		writer.Header().Set("WWW-Authenticate", "Bearer")
+		writer.Header().Set("Cache-Control", "no-store")
+		http.Error(writer, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	s.mux.ServeHTTP(writer, request)
+}
+
+func (s *Server) health(writer http.ResponseWriter, _ *http.Request) {
+	writeJSON(writer, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Server) start(writer http.ResponseWriter, request *http.Request) {

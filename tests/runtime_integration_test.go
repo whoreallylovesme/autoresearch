@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func TestDaemonAndCLICompleteCredentialFreeResearch(t *testing.T) {
+func TestDaemonAndCLICompleteAuthenticatedResearch(t *testing.T) {
 	root, err := filepath.Abs("..")
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +31,9 @@ func TestDaemonAndCLICompleteCredentialFreeResearch(t *testing.T) {
 	baseURL := daemonProcess.baseURL
 	runCtx, runCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer runCancel()
-	output, err := exec.CommandContext(runCtx, control, "run", "--config", filepath.Join(root, "configs", "autoresearch.yaml"), "--api", baseURL).CombinedOutput()
+	command := exec.CommandContext(runCtx, control, "run", "--config", filepath.Join(root, "configs", "autoresearch.yaml"), "--api", baseURL)
+	command.Env = operatorEnvironmentWithFile(daemonProcess.tokenPath)
+	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("researchctl run error = %v\noutput = %s\ndaemon = %s", err, output, daemonProcess.logs.String())
 	}
@@ -40,7 +42,9 @@ func TestDaemonAndCLICompleteCredentialFreeResearch(t *testing.T) {
 	}
 	for _, args := range [][]string{{"status"}, {"agents"}, {"tasks"}, {"budget"}, {"report"}, {"logs", "--follow"}} {
 		args = append(args, "--api", baseURL)
-		output, err := exec.CommandContext(runCtx, control, args...).CombinedOutput()
+		command := exec.CommandContext(runCtx, control, args...)
+		command.Env = operatorEnvironmentWithFile(daemonProcess.tokenPath)
+		output, err := command.CombinedOutput()
 		if err != nil {
 			t.Fatalf("researchctl %v error = %v\noutput = %s", args, err, output)
 		}
@@ -48,7 +52,9 @@ func TestDaemonAndCLICompleteCredentialFreeResearch(t *testing.T) {
 			t.Fatalf("researchctl %v returned no output", args)
 		}
 	}
-	output, err = exec.CommandContext(runCtx, control, "validate", "--config", filepath.Join(root, "configs", "autoresearch.yaml")).CombinedOutput()
+	command = exec.CommandContext(runCtx, control, "validate", "--config", filepath.Join(root, "configs", "autoresearch.yaml"))
+	command.Env = environmentWithoutOperatorCredentials()
+	output, err = command.CombinedOutput()
 	if err != nil || !strings.Contains(string(output), "configuration valid") {
 		t.Fatalf("validate output = %s, error = %v", output, err)
 	}
@@ -78,13 +84,13 @@ func freeAddress(t *testing.T) string {
 	return address
 }
 
-func waitForDaemon(t *testing.T, baseURL string) {
+func waitForDaemon(t *testing.T, process *researchDaemonProcess) {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	var lastStatus map[string]any
 	var lastErr error
 	for time.Now().Before(deadline) {
-		response, err := http.Get(baseURL + "/api/v1/run/status")
+		response, err := process.request(http.MethodGet, "/api/v1/run/status", nil)
 		lastErr = err
 		if err == nil {
 			err = json.NewDecoder(response.Body).Decode(&lastStatus)
@@ -96,5 +102,5 @@ func waitForDaemon(t *testing.T, baseURL string) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	t.Fatal(fmt.Sprintf("daemon at %s did not become ready: last status = %#v, error = %v", baseURL, lastStatus, lastErr))
+	t.Fatal(fmt.Sprintf("daemon at %s did not become ready: last status = %#v, error = %v", process.baseURL, lastStatus, lastErr))
 }

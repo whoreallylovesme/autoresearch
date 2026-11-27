@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/lib/operator-auth.sh
 export COMPOSE_PROJECT_NAME=autoresearch-native-kimi-smoke
 export KIMI_WEB_PORT=18627
 export AUTORESEARCH_CONFIG=configs/kimi-web-demo.yaml
@@ -10,10 +11,15 @@ cleanup() {
   docker rm -f "$daemon" >/dev/null 2>&1 || true
   "${compose[@]}" down --volumes >/dev/null 2>&1 || true
   docker volume rm "${COMPOSE_PROJECT_NAME}_kimi-code-home" >/dev/null 2>&1 || true
+  if [ "${1:-}" != "--preserve-operator-auth" ]; then
+    autoresearch_cleanup_operator_auth
+  fi
 }
 trap cleanup EXIT INT TERM
-cleanup
+autoresearch_prepare_operator_auth
+cleanup --preserve-operator-auth
 "${compose[@]}" config >/dev/null
+"${compose[@]}" run --rm --no-deps operator-auth-init
 docker volume create   --label "com.docker.compose.project=${COMPOSE_PROJECT_NAME}"   --label "com.docker.compose.volume=kimi-code-home"   "${COMPOSE_PROJECT_NAME}_kimi-code-home" >/dev/null
 docker run --rm --user 0:0 -v "${COMPOSE_PROJECT_NAME}_kimi-code-home:/tmp/kimi-code" --entrypoint sh   node@sha256:7c400d78797d8cbe3f6bb21d2227b86af4cd24b0014cc9f62ff989cc16de988e   -c 'mkdir -m 0700 -p /tmp/kimi-code/legacy && printf legacy-marker > /tmp/kimi-code/legacy/private-marker && chmod 0600 /tmp/kimi-code/legacy/private-marker && printf legacy-native-token > /tmp/kimi-code/server.token && chmod 0644 /tmp/kimi-code/server.token'
 "${compose[@]}" up -d --build kimi-token-relay
@@ -30,16 +36,22 @@ if ! "${compose[@]}" exec -T kimi-web test -r /tmp/kimi-code/legacy/private-mark
   exit 1
 fi
 "${compose[@]}" exec -T kimi-token-relay sh -c 'test "$(stat -c %a /run/kimi-web/server.token)" = 400'
+"${compose[@]}" build researchd
 "${compose[@]}" run --rm --no-deps researchd ./bin/researchctl validate --config configs/kimi-web-demo.yaml >/dev/null
 "${compose[@]}" run -d --name "$daemon" --no-deps researchd >/dev/null
 for _ in $(seq 1 60); do
-  if docker exec "$daemon" curl -fsS http://localhost:8080/api/v1/run/status >/dev/null 2>&1; then
+  if docker exec "$daemon" ./bin/researchctl status --api http://localhost:8080 >/dev/null 2>&1; then
     break
   fi
   sleep 1
 done
-docker exec "$daemon" curl -fsS http://localhost:8080/api/v1/run/status >/dev/null
-docker exec "$daemon" python -c 'import json, urllib.request; agents=json.load(urllib.request.urlopen("http://localhost:8080/api/v1/agents"))["agents"]; assert len(agents)==6; assert sum(a["provider"]=="kimi-web" for a in agents)==5'
+docker exec "$daemon" ./bin/researchctl status --api http://localhost:8080 >/dev/null
+unauthenticated_status=$(docker exec "$daemon" curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/api/v1/run/status)
+if [ "$unauthenticated_status" != 401 ]; then
+  printf 'Unauthenticated API status was %s; expected 401\n' "$unauthenticated_status" >&2
+  exit 1
+fi
+docker exec "$daemon" ./bin/researchctl agents --api http://localhost:8080 | python3 -c 'import json, sys; agents=json.load(sys.stdin)["agents"]; assert len(agents)==6; assert sum(a["provider"]=="kimi-web" for a in agents)==5'
 docker run --rm \
   --network "${COMPOSE_PROJECT_NAME}_default" \
   --user 65532:65532 \

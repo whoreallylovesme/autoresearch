@@ -42,7 +42,7 @@ The full research test proves two cited papers, proposed and verified hypotheses
 
 ## Optional extensions, not roadmap blockers
 
-- Rootless Docker production profiles and authenticated remote UI deployment.
+- Rootless Docker production profiles, managed HTTPS reverse proxy, and optional OIDC/multi-user identity.
 - Paid-provider live conformance tests only with an explicit operator test budget.
 - Optional Slurm and additional literature sources.
 - Official external agent backends after protocol-specific validation.
@@ -67,6 +67,14 @@ Contributor handoff rules are in `AGENTS.md`; the CLI uses Cobra, the UI uses `u
 Random 128-bit identifiers for messages, research events, native prompts, knowledge claims, and verification records are centralized in `internal/id`. `New` preserves error returns and `MustNew` preserves the existing explicit panic contract. Go package-test placement and the top-level integration-test boundary are documented in `AGENTS.md` and `docs/testing.md`. The refactor passed the full Go race/integration suite, all deterministic research demos, local-model acceptance, and both Compose smoke tests.
 
 Follow-up consolidation centralizes provider retry/capability snapshots, executor artifact limits and Job.ID validation, operator reply persistence, budget account mutations, SQLite entity/event transactions, graph snapshot copying, and provider/literature pacing. Review-found budget recovery and persistence-atomicity defects are fixed with regression coverage rather than preserved as accidental behavior. Browser graph conversion now has one Python owner, test infrastructure reuses bounded process/Docker helpers, CI delegates to canonical Make targets, and model download/checksum bootstrap is shared. All changes passed independent task and whole-branch reviews, full Go/Python verification, browser acceptance with live graph refresh, deterministic demos, local-model execution, and both Compose smoke tests. No paid or subscription-backed prompts were used.
+
+## Single-operator authentication
+
+The control center, Go API, CLI, and deployment now require a shared high-entropy operator credential through `AUTORESEARCH_OPERATOR_TOKEN` or `AUTORESEARCH_OPERATOR_TOKEN_FILE`. `researchctl auth generate --file` creates an owner-only 256-bit token without printing it. Go routes require Bearer authentication except minimal `/healthz`; UI exposes only `/health`, login, and required framework/static assets. Offline `init`, `validate`, and token generation remain credential-free.
+
+UI login uses expiring server-side NiceGUI sessions with independent startup signing secrets, finite SameSite=Strict cookies, bounded login throttling/body size, exact Host/Origin policies, callback/client/SSE revocation, and private storage. Token rotation uses a fresh bootstrap copy and coordinated daemon/UI restart. Production secrets are UID-owned with mode `0400` or `0600`; only daemon/UI receive them. `docs/adr/0007-single-operator-authentication.md` records the tradeoff.
+
+Verification includes Go startup/REST/SSE/redirect/ownership failures, Python session/CSRF/body-limits/revocation/lifecycle cases, browser login/logout and a second-client revocation flow, deployment shell suites, model cache regression, local-model execution, and both Compose profiles. Real `ui.run`, default Compose, and native Kimi Compose health and authenticated daemon checks passed. No external provider credentials or subscription-backed prompts were used. OIDC, RBAC, and a managed public HTTPS proxy remain outside this change.
 
 ## Handoff
 

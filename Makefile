@@ -1,7 +1,7 @@
 GO ?= go
 UV ?= uv
 
-.PHONY: fmt fmt-check lint test test-integration run-demo literature-demo experiment-demo control-center compose-test browser-test full-research-demo local-model-demo web-setup web-lint web-test validate native-kimi-test
+.PHONY: fmt fmt-check lint test test-integration auth-test run-demo literature-demo experiment-demo control-center compose-test browser-test full-research-demo local-model-demo web-setup web-lint web-test validate native-kimi-test
 
 fmt:
 	$(GO) fmt ./...
@@ -17,6 +17,17 @@ test:
 
 test-integration:
 	$(GO) test -race -tags=integration ./tests/...
+
+auth-test:
+	bash scripts/tests/operator_auth_test.sh
+	bash scripts/tests/compose_auth_test.sh
+	bash scripts/tests/script_auth_static_test.sh
+	@set -e; \
+	token_dir=$$(mktemp -d); \
+	trap 'rm -rf "$$token_dir"' EXIT; \
+	printf '%s\n' 'local-model-cache-test-only-token' > "$$token_dir/operator.token"; \
+	chmod 0600 "$$token_dir/operator.token"; \
+	AUTORESEARCH_OPERATOR_TOKEN_FILE="$$token_dir/operator.token" bash tests/local_model_cache_test.sh
 
 validate:
 	$(GO) run ./cmd/researchctl validate --config configs/autoresearch.yaml

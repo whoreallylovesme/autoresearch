@@ -42,6 +42,9 @@ printf '%s\n' "$checksum_line" | "$REAL_SHA256SUM" -c -
 STUB
 chmod +x "$stub_dir/curl" "$stub_dir/docker" "$stub_dir/sha256sum"
 
+export AUTORESEARCH_OPERATOR_TOKEN_FILE="$test_root/operator.token"
+go run ./cmd/researchctl auth generate --file "$AUTORESEARCH_OPERATOR_TOKEN_FILE" >/dev/null
+
 cache_dir="$test_root/valid-cache"
 mkdir -p "$cache_dir"
 printf 'cached model\n' > "$cache_dir/$model_name"
