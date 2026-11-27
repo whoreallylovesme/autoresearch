@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/whoreallylovesme/autoresearch/internal/api"
 	"github.com/whoreallylovesme/autoresearch/internal/config"
+	"github.com/whoreallylovesme/autoresearch/internal/operatorauth"
 	"github.com/whoreallylovesme/autoresearch/internal/research"
 )
 
@@ -44,6 +45,11 @@ func newRootCommand() *cobra.Command {
 }
 
 func run(parent context.Context, options daemonOptions) error {
+	token, credentialErr := operatorauth.Load()
+	scrubOperatorEnvironment()
+	if credentialErr != nil {
+		return credentialErr
+	}
 	configuration, err := config.Load(options.configPath)
 	if err != nil {
 		return err
@@ -66,14 +72,17 @@ func run(parent context.Context, options daemonOptions) error {
 		}
 	}
 	if options.allowNonLoopback {
-		slog.Warn("non-loopback listener enabled without built-in authentication; use trusted network controls")
+		slog.Warn("non-loopback listener enabled; terminate TLS and apply trusted network controls")
 	}
 	runtime, err := research.NewPersistent(configuration, research.DefaultFactory())
 	if err != nil {
 		return err
 	}
 	defer runtime.Close()
-	apiServer := api.New(runtime)
+	apiServer, err := api.New(runtime, token)
+	if err != nil {
+		return err
+	}
 	httpServer := &http.Server{Addr: address, Handler: apiServer, ReadHeaderTimeout: 5 * time.Second}
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
@@ -94,4 +103,9 @@ func run(parent context.Context, options daemonOptions) error {
 	defer cancel()
 	apiServer.Shutdown(shutdownContext)
 	return httpServer.Shutdown(shutdownContext)
+}
+
+func scrubOperatorEnvironment() {
+	_ = os.Unsetenv(operatorauth.TokenEnvironment)
+	_ = os.Unsetenv(operatorauth.TokenFileEnvironment)
 }

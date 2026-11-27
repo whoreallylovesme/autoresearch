@@ -1,23 +1,18 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/whoreallylovesme/autoresearch/internal/config"
-	"github.com/whoreallylovesme/autoresearch/internal/research"
 )
 
 func main() {
@@ -31,7 +26,7 @@ func main() {
 
 func newRootCommand() *cobra.Command {
 	root := &cobra.Command{Use: "researchctl", Short: "Operate an AutoResearch runtime", SilenceErrors: true, SilenceUsage: true}
-	root.AddCommand(newInitCommand(), newValidateCommand(), newRunCommand())
+	root.AddCommand(newInitCommand(), newValidateCommand(), newRunCommand(), newAuthCommand())
 	for _, operation := range []struct {
 		name string
 		path string
@@ -89,12 +84,16 @@ func newRunCommand() *cobra.Command {
 		if apiURL == "" {
 			apiURL = "http://" + configuration.Runtime.Listen
 		}
-		if err := call(cmd.Context(), http.MethodPost, apiURL+"/api/v1/run/start", nil, nil); err != nil {
+		client, err := newAPIClient()
+		if err != nil {
+			return err
+		}
+		if err := client.call(cmd.Context(), http.MethodPost, apiURL+"/api/v1/run/start", nil, nil); err != nil {
 			return fmt.Errorf("start research (is researchd running?): %w", err)
 		}
 		runContext, cancel := context.WithTimeout(cmd.Context(), timeout)
 		defer cancel()
-		return waitForReport(runContext, apiURL)
+		return client.waitForReport(runContext, apiURL, cmd.OutOrStdout())
 	}}
 	command.Flags().StringVar(&configPath, "config", "configs/autoresearch.yaml", "main configuration path")
 	command.Flags().StringVar(&apiURL, "api", "", "runtime API base URL")
@@ -109,8 +108,12 @@ func newGetCommand(name, path string) *cobra.Command {
 		if baseURL == "" {
 			baseURL = "http://127.0.0.1:8080"
 		}
+		client, err := newAPIClient()
+		if err != nil {
+			return err
+		}
 		var result any
-		if err := call(cmd.Context(), http.MethodGet, baseURL+path, nil, &result); err != nil {
+		if err := client.call(cmd.Context(), http.MethodGet, baseURL+path, nil, &result); err != nil {
 			return err
 		}
 		if name == "report" {
@@ -130,7 +133,11 @@ func newControlCommand(action string) *cobra.Command {
 		if baseURL == "" {
 			baseURL = "http://127.0.0.1:8080"
 		}
-		return call(cmd.Context(), http.MethodPost, baseURL+"/api/v1/run/"+action, nil, nil)
+		client, err := newAPIClient()
+		if err != nil {
+			return err
+		}
+		return client.call(cmd.Context(), http.MethodPost, baseURL+"/api/v1/run/"+action, nil, nil)
 	}}
 	command.Flags().StringVar(&apiURL, "api", "", "runtime API base URL")
 	return command
@@ -143,8 +150,12 @@ func newFinalizeCommand() *cobra.Command {
 		if baseURL == "" {
 			baseURL = "http://127.0.0.1:8080"
 		}
+		client, err := newAPIClient()
+		if err != nil {
+			return err
+		}
 		var result any
-		if err := call(cmd.Context(), http.MethodPost, baseURL+"/api/v1/run/finalize", nil, &result); err != nil {
+		if err := client.call(cmd.Context(), http.MethodPost, baseURL+"/api/v1/run/finalize", nil, &result); err != nil {
 			return err
 		}
 		return printJSON(result)
@@ -161,11 +172,15 @@ func newLogsCommand() *cobra.Command {
 		if baseURL == "" {
 			baseURL = "http://127.0.0.1:8080"
 		}
+		client, err := newAPIClient()
+		if err != nil {
+			return err
+		}
 		if follow {
-			return streamEvents(cmd.Context(), baseURL)
+			return client.streamEvents(cmd.Context(), baseURL, cmd.OutOrStdout())
 		}
 		var result any
-		if err := call(cmd.Context(), http.MethodGet, baseURL+"/api/v1/events", nil, &result); err != nil {
+		if err := client.call(cmd.Context(), http.MethodGet, baseURL+"/api/v1/events", nil, &result); err != nil {
 			return err
 		}
 		return printJSON(result)
@@ -187,8 +202,12 @@ func newChatCommand() *cobra.Command {
 			baseURL = "http://127.0.0.1:8080"
 		}
 		payload, _ := json.Marshal(map[string]any{"message": message, "directive": directive})
+		client, err := newAPIClient()
+		if err != nil {
+			return err
+		}
 		var result any
-		if err := call(cmd.Context(), http.MethodPost, baseURL+"/api/v1/chat", payload, &result); err != nil {
+		if err := client.call(cmd.Context(), http.MethodPost, baseURL+"/api/v1/chat", payload, &result); err != nil {
 			return err
 		}
 		return printJSON(result)
@@ -197,83 +216,6 @@ func newChatCommand() *cobra.Command {
 	command.Flags().StringVar(&message, "message", "", "operator chat message")
 	command.Flags().BoolVar(&directive, "directive", false, "send an authoritative operator directive")
 	return command
-}
-
-func waitForReport(ctx context.Context, baseURL string) error {
-	ticker := time.NewTicker(25 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		var status research.Status
-		if err := call(ctx, http.MethodGet, baseURL+"/api/v1/run/status", nil, &status); err != nil {
-			return err
-		}
-		switch status.State {
-		case research.StateCompleted:
-			var report map[string]string
-			if err := call(ctx, http.MethodGet, baseURL+"/api/v1/report", nil, &report); err != nil {
-				return err
-			}
-			fmt.Println(report["report"])
-			return nil
-		case research.StateFailed, research.StateCancelled:
-			return fmt.Errorf("research ended in state %s", status.State)
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-		}
-	}
-}
-
-func streamEvents(ctx context.Context, baseURL string) error {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/api/v1/events/stream", nil)
-	if err != nil {
-		return err
-	}
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		return responseError(response)
-	}
-	scanner := bufio.NewScanner(response.Body)
-	for scanner.Scan() {
-		if strings.HasPrefix(scanner.Text(), "data: ") {
-			fmt.Println(strings.TrimPrefix(scanner.Text(), "data: "))
-		}
-	}
-	return scanner.Err()
-}
-
-func call(ctx context.Context, method, url string, body []byte, destination any) error {
-	request, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	if body != nil {
-		request.Header.Set("Content-Type", "application/json")
-	}
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return responseError(response)
-	}
-	if destination != nil {
-		return json.NewDecoder(io.LimitReader(response.Body, 16<<20)).Decode(destination)
-	}
-	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 1<<20))
-	return nil
-}
-
-func responseError(response *http.Response) error {
-	body, _ := io.ReadAll(io.LimitReader(response.Body, 1<<20))
-	return fmt.Errorf("API returned %s: %s", response.Status, strings.TrimSpace(string(body)))
 }
 
 func printJSON(value any) error {

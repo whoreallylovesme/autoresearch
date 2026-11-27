@@ -27,7 +27,7 @@ func TestResearchDaemonRecoversAfterSIGKILL(t *testing.T) {
 	firstAddress := freeAddress(t)
 	first := startResearchDaemon(t, root, daemon, dataDir, firstAddress, "AUTORESEARCH_DEMO_DELAY=2s")
 	first.waitReady(t)
-	response, err := http.Post(first.baseURL+"/api/v1/run/start", "application/json", bytes.NewReader(nil))
+	response, err := first.request(http.MethodPost, "/api/v1/run/start", bytes.NewReader(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestResearchDaemonRecoversAfterSIGKILL(t *testing.T) {
 		t.Logf("second daemon logs: %s", second.logs.String())
 	}()
 	second.waitReady(t)
-	response, err = http.Post(second.baseURL+"/api/v1/run/start", "application/json", bytes.NewReader(nil))
+	response, err = second.request(http.MethodPost, "/api/v1/run/start", bytes.NewReader(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestResearchDaemonRecoversAfterSIGKILL(t *testing.T) {
 		t.Fatalf("restart status = %s; first logs = %s; second logs = %s", response.Status, first.logs.String(), second.logs.String())
 	}
 	response.Body.Close()
-	waitForResearchState(t, "http://"+secondAddress, "completed")
+	waitForResearchState(t, second, "completed")
 	store, err := storage.Open(filepath.Join(dataDir, "autoresearch.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -76,11 +76,11 @@ func TestResearchDaemonRecoversAfterSIGKILL(t *testing.T) {
 	}
 }
 
-func waitForResearchState(t *testing.T, baseURL, expected string) {
+func waitForResearchState(t *testing.T, process *researchDaemonProcess, expected string) {
 	t.Helper()
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
-		response, err := http.Get(baseURL + "/api/v1/run/status")
+		response, err := process.request(http.MethodGet, "/api/v1/run/status", nil)
 		if err == nil {
 			var status map[string]any
 			_ = json.NewDecoder(response.Body).Decode(&status)

@@ -1,9 +1,16 @@
 # Credentials and private runtime state
 .env
 .env.*
+*.env
 !.env.example
 *.pem
 *.key
+*.token
+*.tokens
+*.secret
+*.secrets
+operator-token
+operator.token
 id_*
 secrets/
 private/
@@ -41,3 +48,4 @@ tmp/
 
 # Isolated development worktrees
 .worktrees/
+.nicegui

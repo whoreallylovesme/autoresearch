@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/whoreallylovesme/autoresearch/internal/api"
 	"github.com/whoreallylovesme/autoresearch/internal/config"
+	"github.com/whoreallylovesme/autoresearch/internal/operatorauth"
 	"github.com/whoreallylovesme/autoresearch/internal/provider"
 	"github.com/whoreallylovesme/autoresearch/internal/research"
 )
 
 func TestAPIStartsAndExposesResearchRun(t *testing.T) {
 	runtime := newRuntime(t, research.DemoFactory())
-	server := httptest.NewServer(api.New(runtime))
+	server := httptest.NewServer(newAuthenticatedServer(t, runtime))
 	defer server.Close()
 	response := request(t, http.MethodPost, server.URL+"/api/v1/run/start", nil)
 	if response.StatusCode != http.StatusAccepted {
@@ -89,7 +89,7 @@ func TestAPIStopCancelsActiveRun(t *testing.T) {
 		}), nil
 	}
 	runtime := newRuntime(t, factory)
-	server := httptest.NewServer(api.New(runtime))
+	server := httptest.NewServer(newAuthenticatedServer(t, runtime))
 	defer server.Close()
 	response := request(t, http.MethodPost, server.URL+"/api/v1/run/start", nil)
 	response.Body.Close()
@@ -102,7 +102,7 @@ func TestAPIStopCancelsActiveRun(t *testing.T) {
 }
 
 func TestAPIRejectsWrongMethod(t *testing.T) {
-	server := httptest.NewServer(api.New(newRuntime(t, research.DemoFactory())))
+	server := httptest.NewServer(newAuthenticatedServer(t, newRuntime(t, research.DemoFactory())))
 	defer server.Close()
 	response := request(t, http.MethodDelete, server.URL+"/api/v1/run/status", nil)
 	defer response.Body.Close()
@@ -160,13 +160,20 @@ func mustRequest(t *testing.T, method, url string, body []byte) *http.Request {
 	if err != nil {
 		t.Fatal(err)
 	}
+	credential, err := operatorauth.Parse(testOperatorToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := credential.SetBearer(request); err != nil {
+		t.Fatal(err)
+	}
 	return request
 }
 
 func TestAPIPauseResumeFinalizeAndChat(t *testing.T) {
 	t.Setenv("AUTORESEARCH_DEMO_DELAY", "30ms")
 	runtime := newRuntime(t, research.DemoFactory())
-	server := httptest.NewServer(api.New(runtime))
+	server := httptest.NewServer(newAuthenticatedServer(t, runtime))
 	defer server.Close()
 	response := request(t, http.MethodPost, server.URL+"/api/v1/run/start", nil)
 	response.Body.Close()

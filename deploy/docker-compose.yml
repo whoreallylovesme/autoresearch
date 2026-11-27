@@ -1,4 +1,27 @@
 services:
+  operator-auth-init:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    user: "0:0"
+    entrypoint: ["sh", "-c"]
+    command: ["chown 65532:65532 /run/autoresearch && chmod 0700 /run/autoresearch && cp /run/secrets/operator-token /run/autoresearch/operator.token && chown 65532:65532 /run/autoresearch/operator.token && chmod 0400 /run/autoresearch/operator.token"]
+    restart: "no"
+    secrets:
+      - source: operator-token
+        target: operator-token
+    volumes:
+      - operator-auth:/run/autoresearch
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+
   llama:
     image: ghcr.io/ggml-org/llama.cpp@sha256:b0cd5490eefff30b40dcd47f7249a7d7211136908f73fe440a2a86b35a22b23b
     restart: unless-stopped
@@ -106,10 +129,12 @@ services:
     command: ["./bin/researchd", "--config", "${AUTORESEARCH_CONFIG:-configs/local-hf.yaml}", "--listen", "0.0.0.0:8080", "--allow-non-loopback", "--data-dir", "/var/lib/autoresearch"]
     environment:
       AUTORESEARCH_MODEL_BASE_URL: http://llama:8080/v1
+      AUTORESEARCH_OPERATOR_TOKEN_FILE: /run/autoresearch/operator.token
       KIMI_WEB_BASE_URL: http://kimi-web:58627
       KIMI_WEB_TOKEN_FILE: /run/kimi-web/server.token
     volumes:
       - autoresearch-data:/var/lib/autoresearch
+      - operator-auth:/run/autoresearch:ro
       - kimi-web-token:/run/kimi-web:ro
       - kimi-sessions:/srv/autoresearch-private/kimi-sessions
     ports:
@@ -122,10 +147,12 @@ services:
     cap_drop:
       - ALL
     depends_on:
+      operator-auth-init:
+        condition: service_completed_successfully
       llama:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/run/status"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -139,28 +166,42 @@ services:
     command: ["uv", "run", "--frozen", "--no-dev", "--project", ".", "python", "-m", "autoresearch_ui.main"]
     environment:
       AUTORESEARCH_API: http://researchd:8080/api/v1
+      AUTORESEARCH_OPERATOR_TOKEN_FILE: /run/autoresearch/operator.token
       AUTORESEARCH_UI_HOST: 0.0.0.0
       AUTORESEARCH_UI_PORT: 8081
+      AUTORESEARCH_UI_ALLOWED_HOSTS: "localhost:8081,127.0.0.1:${AUTORESEARCH_UI_PORT:-8081}"
+      AUTORESEARCH_UI_ALLOWED_ORIGINS: "http://127.0.0.1:${AUTORESEARCH_UI_PORT:-8081}"
+      AUTORESEARCH_UI_SESSION_MAX_AGE: "${AUTORESEARCH_UI_SESSION_MAX_AGE:-28800}"
+      NICEGUI_STORAGE_PATH: /tmp/nicegui
+    volumes:
+      - operator-auth:/run/autoresearch:ro
     ports:
       - "127.0.0.1:${AUTORESEARCH_UI_PORT:-8081}:8081"
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,size=64m,uid=65532,gid=65532,mode=0700
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
     depends_on:
+      operator-auth-init:
+        condition: service_completed_successfully
       researchd:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8081/health"]
+      test: ["CMD", "curl", "-fsS", "--header", "Host: localhost:8081", "http://localhost:8081/health"]
       interval: 5s
       timeout: 3s
       retries: 20
 
 volumes:
   autoresearch-data:
+  operator-auth:
   kimi-code-home:
   kimi-web-token:
   kimi-sessions:
+
+secrets:
+  operator-token:
+    file: ${AUTORESEARCH_OPERATOR_TOKEN_FILE:?AUTORESEARCH_OPERATOR_TOKEN_FILE is required}
